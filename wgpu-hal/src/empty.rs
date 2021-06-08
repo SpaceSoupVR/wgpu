@@ -37,12 +37,16 @@ impl crate::Api for Api {
 }
 
 impl crate::Instance<Api> for Context {
+    unsafe fn init() -> Result<Self, crate::InstanceError> {
+        Ok(Context)
+    }
     unsafe fn create_surface(
         &self,
         rwh: &impl raw_window_handle::HasRawWindowHandle,
-    ) -> Result<Context, crate::UnsupportedWindow> {
+    ) -> Result<Context, crate::InstanceError> {
         Ok(Context)
     }
+    unsafe fn destroy_surface(&self, surface: Context) {}
     unsafe fn enumerate_adapters(&self) -> Vec<crate::ExposedAdapter<Api>> {
         Vec::new()
     }
