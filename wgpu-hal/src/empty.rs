@@ -37,7 +37,7 @@ impl crate::Api for Api {
 }
 
 impl crate::Instance<Api> for Context {
-    unsafe fn init() -> Result<Self, crate::InstanceError> {
+    unsafe fn init(desc: &crate::InstanceDescriptor) -> Result<Self, crate::InstanceError> {
         Ok(Context)
     }
     unsafe fn create_surface(
