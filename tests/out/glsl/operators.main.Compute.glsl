@@ -19,9 +19,17 @@ int unary() {
     }
 }
 
+vec4 selection() {
+    vec4 vector1_ = vec4(1.0);
+    vec4 vector2_ = vec4(1.0);
+    int a = (true ? 0 : 1);
+    return (true ? vector1_ : vector2_);
+}
+
 void main() {
     vec4 _expr0 = splat();
     int _expr1 = unary();
+    vec4 _expr2 = selection();
     return;
 }
 
