@@ -4,7 +4,17 @@ precision highp float;
 precision highp int;
 
 struct Globals {
+    mat4x4 view_proj;
     uvec4 num_lights;
+};
+struct Entity {
+    mat4x4 world;
+    vec4 color;
+};
+struct VertexOutput {
+    vec4 proj_position;
+    vec3 world_normal;
+    vec4 world_position;
 };
 struct Light {
     mat4x4 proj;
@@ -13,9 +23,9 @@ struct Light {
 };
 uniform Globals_block_0Fragment { Globals _group_0_binding_0_fs; };
 
-layout(std430) readonly buffer Lights_block_1Fragment {
-    Light data[];
-} _group_0_binding_1_fs;
+uniform Entity_block_1Fragment { Entity _group_1_binding_0_fs; };
+
+layout(std430) readonly buffer type_6_block_2Fragment { Light _group_0_binding_1_fs[]; };
 
 uniform highp sampler2DArrayShadow _group_0_binding_2_fs;
 
@@ -28,40 +38,42 @@ float fetch_shadow(uint light_id, vec4 homogeneous_coords) {
         return 1.0;
     }
     vec2 flip_correction = vec2(0.5, -0.5);
-    vec2 light_local = (((homogeneous_coords.xy * flip_correction) / vec2(homogeneous_coords.w)) + vec2(0.5, 0.5));
-    float _e26 = textureGrad(_group_0_binding_2_fs, vec4(light_local, int(light_id), (homogeneous_coords.z / homogeneous_coords.w)), vec2(0.0), vec2(0.0));
-    return _e26;
+    float proj_correction = (1.0 / homogeneous_coords.w);
+    vec2 light_local = (((homogeneous_coords.xy * flip_correction) * proj_correction) + vec2(0.5, 0.5));
+    float _e28 = textureGrad(_group_0_binding_2_fs, vec4(light_local, int(light_id), (homogeneous_coords.z * proj_correction)), vec2(0.0), vec2(0.0));
+    return _e28;
 }
 
 void main() {
-    vec3 raw_normal = _vs2fs_location0;
-    vec4 position = _vs2fs_location1;
+    VertexOutput in_ = VertexOutput(gl_FragCoord, _vs2fs_location0, _vs2fs_location1);
     vec3 color = vec3(0.05000000074505806, 0.05000000074505806, 0.05000000074505806);
     uint i = 0u;
-    vec3 normal = normalize(raw_normal);
+    vec3 normal_1 = normalize(in_.world_normal);
     bool loop_init = true;
     while(true) {
         if (!loop_init) {
-        uint _e40 = i;
-        i = (_e40 + 1u);
+        uint _e20 = i;
+        i = (_e20 + 1u);
         }
         loop_init = false;
-        uint _e12 = i;
-        uint _e15 = _group_0_binding_0_fs.num_lights.x;
-        if ((_e12 >= min(_e15, 10u))) {
+        uint _e14 = i;
+        uint _e17 = _group_0_binding_0_fs.num_lights.x;
+        if ((_e14 < min(_e17, 10u))) {
+        } else {
             break;
         }
-        uint _e19 = i;
-        Light light = _group_0_binding_1_fs.data[_e19];
-        uint _e22 = i;
-        float _e25 = fetch_shadow(_e22, (light.proj * position));
-        vec3 light_dir = normalize((light.pos.xyz - position.xyz));
-        float diffuse = max(0.0, dot(normal, light_dir));
-        vec3 _e34 = color;
-        color = (_e34 + ((_e25 * diffuse) * light.color.xyz));
+        uint _e23 = i;
+        Light light = _group_0_binding_1_fs[_e23];
+        uint _e26 = i;
+        float _e30 = fetch_shadow(_e26, (light.proj * in_.world_position));
+        vec3 light_dir = normalize((light.pos.xyz - in_.world_position.xyz));
+        float diffuse = max(0.0, dot(normal_1, light_dir));
+        vec3 _e40 = color;
+        color = (_e40 + ((_e30 * diffuse) * light.color.xyz));
     }
-    vec3 _e43 = color;
-    _fs2p_location0 = vec4(_e43, 1.0);
+    vec3 _e46 = color;
+    vec4 _e50 = _group_1_binding_0_fs.color;
+    _fs2p_location0 = (vec4(_e46, 1.0) * _e50);
     return;
 }
 
