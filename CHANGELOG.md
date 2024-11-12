@@ -53,6 +53,10 @@ Bottom level categories:
 
 - Fix surface creation crashing on iOS. By @mockersf in [#6535](https://github.com/gfx-rs/wgpu/pull/6535)
 
+#### Vulkan
+
+- Fix surface capabilities being advertised when its query failed. By @wumpf in [#6510](https://github.com/gfx-rs/wgpu/pull/6510)
+
 ## 23.0.0 (2024-10-25)
 
 ### Themes of this release
