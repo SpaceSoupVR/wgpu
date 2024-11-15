@@ -40,6 +40,14 @@ Bottom level categories:
 
 ## Unreleased
 
+## 23.1.0 (2024-11-??)
+
+### Bug fixes
+
+#### Metal
+
+- Fix surface creation crashing on iOS. By @mockersf in [#6535](https://github.com/gfx-rs/wgpu/pull/6535)
+
 ## 23.0.0 (2024-10-25)
 
 ### Themes of this release
