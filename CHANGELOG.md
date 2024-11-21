@@ -44,6 +44,11 @@ Bottom level categories:
 
 ### Bug fixes
 
+
+#### General
+
+- Fix Texture view leaks regression. By @xiaopengli89 in [#6576](https://github.com/gfx-rs/wgpu/pull/6576)
+
 #### Metal
 
 - Fix surface creation crashing on iOS. By @mockersf in [#6535](https://github.com/gfx-rs/wgpu/pull/6535)
