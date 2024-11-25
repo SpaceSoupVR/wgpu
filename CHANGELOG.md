@@ -40,10 +40,10 @@ Bottom level categories:
 
 ## Unreleased
 
-## 23.0.1 (2024-11-24)
+## 23.0.1 (2024-11-25)
 
-This release includes `wgpu`, `wgpu-core` and `wgpu-hal`. All other crates remain at 23.0.0.
-Below changes were cherry-picked from 23.0.0.
+This release includes patches for `wgpu`, `wgpu-core` and `wgpu-hal`. All other crates remain at [23.0.0](https://github.com/gfx-rs/wgpu/releases/tag/v23.0.0).
+Below changes were cherry-picked from 24.0.0 development line.
 
 ### Bug fixes
 
