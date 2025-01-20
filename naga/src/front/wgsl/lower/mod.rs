@@ -372,6 +372,7 @@ pub struct ExpressionContext<'source, 'temp, 'out> {
 }
 
 impl<'source, 'temp, 'out> ExpressionContext<'source, 'temp, 'out> {
+    #[allow(dead_code)]
     fn as_const(&mut self) -> ExpressionContext<'source, '_, '_> {
         ExpressionContext {
             globals: self.globals,
@@ -379,7 +380,21 @@ impl<'source, 'temp, 'out> ExpressionContext<'source, 'temp, 'out> {
             ast_expressions: self.ast_expressions,
             const_typifier: self.const_typifier,
             module: self.module,
-            expr_type: ExpressionContextType::Constant(None),
+            expr_type: ExpressionContextType::Constant(match self.expr_type {
+                ExpressionContextType::Runtime(ref mut local_expression_context)
+                | ExpressionContextType::Constant(Some(ref mut local_expression_context)) => {
+                    Some(LocalExpressionContext {
+                        local_table: local_expression_context.local_table,
+                        function: local_expression_context.function,
+                        block: local_expression_context.block,
+                        emitter: local_expression_context.emitter,
+                        typifier: local_expression_context.typifier,
+                        local_expression_kind_tracker: local_expression_context
+                            .local_expression_kind_tracker,
+                    })
+                }
+                ExpressionContextType::Constant(None) | ExpressionContextType::Override => None,
+            }),
             global_expression_kind_tracker: self.global_expression_kind_tracker,
         }
     }
@@ -2903,7 +2918,7 @@ impl<'source, 'temp> Lowerer<'source, 'temp> {
 
         let offset = args
             .next()
-            .map(|arg| self.expression(arg, &mut ctx.as_const()))
+            .map(|arg| self.expression(arg, &mut ctx.as_global().as_const()))
             .ok()
             .transpose()?;
 
