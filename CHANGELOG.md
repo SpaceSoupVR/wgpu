@@ -40,6 +40,12 @@ Bottom level categories:
 
 ## Unreleased
 
+### New Features
+
+#### Naga
+
+- Support @must_use attribute on function declarations. By @turbocrime in [#6801](https://github.com/gfx-rs/wgpu/pull/6801).
+
 ### Changes
 
 #### General

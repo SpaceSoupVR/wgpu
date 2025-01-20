@@ -934,7 +934,10 @@ impl Components {
 
 /// An `ast::GlobalDecl` for which we have built the Naga IR equivalent.
 enum LoweredGlobalDecl {
-    Function(Handle<crate::Function>),
+    Function {
+        handle: Handle<crate::Function>,
+        must_use: bool,
+    },
     Var(Handle<crate::GlobalVariable>),
     Const(Handle<crate::Constant>),
     Override(Handle<crate::Override>),
@@ -1365,7 +1368,10 @@ impl<'source, 'temp> Lowerer<'source, 'temp> {
             Ok(LoweredGlobalDecl::EntryPoint)
         } else {
             let handle = ctx.module.functions.append(function, span);
-            Ok(LoweredGlobalDecl::Function(handle))
+            Ok(LoweredGlobalDecl::Function {
+                handle,
+                must_use: f.result.as_ref().is_some_and(|res| res.must_use),
+            })
         }
     }
 
@@ -1934,7 +1940,7 @@ impl<'source, 'temp> Lowerer<'source, 'temp> {
                     LoweredGlobalDecl::Override(handle) => {
                         Typed::Plain(crate::Expression::Override(handle))
                     }
-                    LoweredGlobalDecl::Function(_)
+                    LoweredGlobalDecl::Function { .. }
                     | LoweredGlobalDecl::Type(_)
                     | LoweredGlobalDecl::EntryPoint => {
                         return Err(Error::Unexpected(span, ExpectedToken::Variable));
@@ -2181,12 +2187,13 @@ impl<'source, 'temp> Lowerer<'source, 'temp> {
         ctx: &mut ExpressionContext<'source, '_, '_>,
         is_statement: bool,
     ) -> Result<Option<Handle<crate::Expression>>, Error<'source>> {
+        let function_span = function.span;
         match ctx.globals.get(function.name) {
             Some(&LoweredGlobalDecl::Type(ty)) => {
                 let handle = self.construct(
                     span,
                     &ast::ConstructorType::Type(ty),
-                    function.span,
+                    function_span,
                     arguments,
                     ctx,
                 )?;
@@ -2196,9 +2203,12 @@ impl<'source, 'temp> Lowerer<'source, 'temp> {
                 &LoweredGlobalDecl::Const(_)
                 | &LoweredGlobalDecl::Override(_)
                 | &LoweredGlobalDecl::Var(_),
-            ) => Err(Error::Unexpected(function.span, ExpectedToken::Function)),
-            Some(&LoweredGlobalDecl::EntryPoint) => Err(Error::CalledEntryPoint(function.span)),
-            Some(&LoweredGlobalDecl::Function(function)) => {
+            ) => Err(Error::Unexpected(function_span, ExpectedToken::Function)),
+            Some(&LoweredGlobalDecl::EntryPoint) => Err(Error::CalledEntryPoint(function_span)),
+            Some(&LoweredGlobalDecl::Function {
+                handle: function,
+                must_use,
+            }) => {
                 let arguments = arguments
                     .iter()
                     .enumerate()
@@ -2223,6 +2233,11 @@ impl<'source, 'temp> Lowerer<'source, 'temp> {
                     .collect::<Result<Vec<_>, _>>()?;
 
                 let has_result = ctx.module.functions[function].result.is_some();
+
+                if must_use && is_statement {
+                    return Err(Error::FunctionMustUseUnused(function_span));
+                }
+
                 let rctx = ctx.runtime_expression_ctx(span)?;
                 // we need to always do this before a fn call since all arguments need to be emitted before the fn call
                 rctx.block
@@ -2249,7 +2264,7 @@ impl<'source, 'temp> Lowerer<'source, 'temp> {
                 Ok(result)
             }
             None => {
-                let span = function.span;
+                let span = function_span;
                 let expr = if let Some(fun) = conv::map_relational_fun(function.name) {
                     let mut args = ctx.prepare_args(arguments, 1, span);
                     let argument = self.expression(args.next()?, ctx)?;
