@@ -83,6 +83,10 @@ By @brodycj in [#6925](https://github.com/gfx-rs/wgpu/pull/6925).
 
 - Stop naga causing undefined behavior when a ray query misses. By @Vecvec in [#6752](https://github.com/gfx-rs/wgpu/pull/6752).
 
+### Documentation
+
+- Improved documentation around pipeline caches. By @DJMcNab in [#6978](https://github.com/gfx-rs/wgpu/pull/6978).
+
 ## v24.0.0 (2025-01-15)
 
 ### Major changes

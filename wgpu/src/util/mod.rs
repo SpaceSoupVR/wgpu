@@ -155,16 +155,35 @@ impl std::ops::Deref for DownloadBuffer {
 ///
 /// # Examples
 ///
-/// ``` no_run
+/// ```no_run
 /// # use std::path::PathBuf;
+/// use wgpu::PipelineCacheDescriptor;
 /// # let adapter_info = todo!();
-/// let cache_dir: PathBuf = PathBuf::new();
+/// # let device: wgpu::Device = todo!();
+/// let cache_dir: PathBuf = unimplemented!("Some reasonable platform-specific cache directory for your app.");
 /// let filename = wgpu::util::pipeline_cache_key(&adapter_info);
-/// if let Some(filename) = filename {
-///     let cache_file = cache_dir.join(&filename);
-///     let cache_data = std::fs::read(&cache_file);
-///     let pipeline_cache: wgpu::PipelineCache = todo!("Use data (if present) to create a pipeline cache");
+/// let (pipeline_cache, cache_file) = if let Some(filename) = filename {
+///     let cache_path = cache_dir.join(&filename);
+///     // If we failed to read the cache, for whatever reason, treat the data as lost.
+///     // In a real app, we'd probably avoid caching entirely unless the error was "file not found".
+///     let cache_data = std::fs::read(&cache_path).ok();
+///     let pipeline_cache = unsafe {
+///         device.create_pipeline_cache(&PipelineCacheDescriptor {
+///             data: cache_data.as_deref(),
+///             label: None,
+///             fallback: true
+///         })
+///     };
+///     (Some(pipeline_cache), Some(cache_path))
+/// } else {
+///     (None, None)
+/// };
 ///
+/// // Run pipeline initialisation, making sure to set the `cache`
+/// // fields of your `*PipelineDescriptor` to `pipeline_cache`
+///
+/// // And then save the resulting cache (probably off the main thread).
+/// if let (Some(pipeline_cache), Some(cache_file)) = (pipeline_cache, cache_file) {
 ///     let data = pipeline_cache.get_data();
 ///     if let Some(data) = data {
 ///         let temp_file = cache_file.with_extension("temp");
@@ -172,7 +191,7 @@ impl std::ops::Deref for DownloadBuffer {
 ///         std::fs::rename(&temp_file, &cache_file)?;
 ///     }
 /// }
-/// # Ok::<(), std::io::Error>(())
+/// # Ok::<_, std::io::Error>(())
 /// ```
 ///
 /// [`PipelineCache`]: super::PipelineCache
