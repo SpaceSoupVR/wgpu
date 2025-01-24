@@ -383,7 +383,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
                     },
                 };
                 self.temp.barriers.push(raw);
-            } else if barrier.usage.from == crate::BufferUses::STORAGE_READ_WRITE {
+            } else if barrier.usage.from == wgt::BufferUses::STORAGE_READ_WRITE {
                 let raw = Direct3D12::D3D12_RESOURCE_BARRIER {
                     Type: Direct3D12::D3D12_RESOURCE_BARRIER_TYPE_UAV,
                     Flags: Direct3D12::D3D12_RESOURCE_BARRIER_FLAG_NONE,
@@ -482,7 +482,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
                         }
                     }
                 }
-            } else if barrier.usage.from == crate::TextureUses::STORAGE_READ_WRITE {
+            } else if barrier.usage.from == wgt::TextureUses::STORAGE_READ_WRITE {
                 let raw = Direct3D12::D3D12_RESOURCE_BARRIER {
                     Type: Direct3D12::D3D12_RESOURCE_BARRIER_TYPE_UAV,
                     Flags: Direct3D12::D3D12_RESOURCE_BARRIER_FLAG_NONE,
@@ -545,7 +545,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
     unsafe fn copy_texture_to_texture<T>(
         &mut self,
         src: &super::Texture,
-        _src_usage: crate::TextureUses,
+        _src_usage: wgt::TextureUses,
         dst: &super::Texture,
         regions: T,
     ) where
@@ -626,7 +626,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
     unsafe fn copy_texture_to_buffer<T>(
         &mut self,
         src: &super::Texture,
-        _src_usage: crate::TextureUses,
+        _src_usage: wgt::TextureUses,
         dst: &super::Buffer,
         regions: T,
     ) where
@@ -735,7 +735,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
         }
 
         let ds_view = desc.depth_stencil_attachment.as_ref().map(|ds| {
-            if ds.target.usage == crate::TextureUses::DEPTH_STENCIL_WRITE {
+            if ds.target.usage == wgt::TextureUses::DEPTH_STENCIL_WRITE {
                 ds.target.view.handle_dsv_rw.as_ref().unwrap().raw
             } else {
                 ds.target.view.handle_dsv_ro.as_ref().unwrap().raw

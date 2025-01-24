@@ -148,7 +148,7 @@ impl<A: hal::Api> Example<A> {
                 height: window_size.1,
                 depth_or_array_layers: 1,
             },
-            usage: hal::TextureUses::COLOR_TARGET,
+            usage: wgpu_types::TextureUses::COLOR_TARGET,
             view_formats: vec![],
         };
         unsafe {
@@ -287,7 +287,7 @@ impl<A: hal::Api> Example<A> {
         let staging_buffer_desc = hal::BufferDescriptor {
             label: Some("stage"),
             size: texture_data.len() as wgpu_types::BufferAddress,
-            usage: hal::BufferUses::MAP_WRITE | hal::BufferUses::COPY_SRC,
+            usage: wgpu_types::BufferUses::MAP_WRITE | wgpu_types::BufferUses::COPY_SRC,
             memory_flags: hal::MemoryFlags::TRANSIENT | hal::MemoryFlags::PREFER_COHERENT,
         };
         let staging_buffer = unsafe { device.create_buffer(&staging_buffer_desc).unwrap() };
@@ -315,7 +315,7 @@ impl<A: hal::Api> Example<A> {
             sample_count: 1,
             dimension: wgpu_types::TextureDimension::D2,
             format: wgpu_types::TextureFormat::Rgba8UnormSrgb,
-            usage: hal::TextureUses::COPY_DST | hal::TextureUses::RESOURCE,
+            usage: wgpu_types::TextureUses::COPY_DST | wgpu_types::TextureUses::RESOURCE,
             memory_flags: hal::MemoryFlags::empty(),
             view_formats: vec![],
         };
@@ -331,24 +331,24 @@ impl<A: hal::Api> Example<A> {
             let buffer_barrier = hal::BufferBarrier {
                 buffer: &staging_buffer,
                 usage: hal::StateTransition {
-                    from: hal::BufferUses::empty(),
-                    to: hal::BufferUses::COPY_SRC,
+                    from: wgpu_types::BufferUses::empty(),
+                    to: wgpu_types::BufferUses::COPY_SRC,
                 },
             };
             let texture_barrier1 = hal::TextureBarrier {
                 texture: &texture,
                 range: wgpu_types::ImageSubresourceRange::default(),
                 usage: hal::StateTransition {
-                    from: hal::TextureUses::UNINITIALIZED,
-                    to: hal::TextureUses::COPY_DST,
+                    from: wgpu_types::TextureUses::UNINITIALIZED,
+                    to: wgpu_types::TextureUses::COPY_DST,
                 },
             };
             let texture_barrier2 = hal::TextureBarrier {
                 texture: &texture,
                 range: wgpu_types::ImageSubresourceRange::default(),
                 usage: hal::StateTransition {
-                    from: hal::TextureUses::COPY_DST,
-                    to: hal::TextureUses::RESOURCE,
+                    from: wgpu_types::TextureUses::COPY_DST,
+                    to: wgpu_types::TextureUses::RESOURCE,
                 },
             };
             let copy = hal::BufferTextureCopy {
@@ -405,7 +405,7 @@ impl<A: hal::Api> Example<A> {
         let global_buffer_desc = hal::BufferDescriptor {
             label: Some("global"),
             size: size_of::<Globals>() as wgpu_types::BufferAddress,
-            usage: hal::BufferUses::MAP_WRITE | hal::BufferUses::UNIFORM,
+            usage: wgpu_types::BufferUses::MAP_WRITE | wgpu_types::BufferUses::UNIFORM,
             memory_flags: hal::MemoryFlags::PREFER_COHERENT,
         };
         let global_buffer = unsafe {
@@ -431,7 +431,7 @@ impl<A: hal::Api> Example<A> {
             label: Some("local"),
             size: (MAX_BUNNIES as wgpu_types::BufferAddress)
                 * (local_alignment as wgpu_types::BufferAddress),
-            usage: hal::BufferUses::MAP_WRITE | hal::BufferUses::UNIFORM,
+            usage: wgpu_types::BufferUses::MAP_WRITE | wgpu_types::BufferUses::UNIFORM,
             memory_flags: hal::MemoryFlags::PREFER_COHERENT,
         };
         let local_buffer = unsafe { device.create_buffer(&local_buffer_desc).unwrap() };
@@ -440,7 +440,7 @@ impl<A: hal::Api> Example<A> {
             label: None,
             format: texture_desc.format,
             dimension: wgpu_types::TextureViewDimension::D2,
-            usage: hal::TextureUses::RESOURCE,
+            usage: wgpu_types::TextureUses::RESOURCE,
             range: wgpu_types::ImageSubresourceRange::default(),
         };
         let texture_view = unsafe { device.create_texture_view(&texture, &view_desc).unwrap() };
@@ -453,7 +453,7 @@ impl<A: hal::Api> Example<A> {
             };
             let texture_binding = hal::TextureBinding {
                 view: &texture_view,
-                usage: hal::TextureUses::RESOURCE,
+                usage: wgpu_types::TextureUses::RESOURCE,
             };
             let global_group_desc = hal::BindGroupDescriptor {
                 label: Some("global"),
@@ -675,8 +675,8 @@ impl<A: hal::Api> Example<A> {
             texture: surface_tex.borrow(),
             range: wgpu_types::ImageSubresourceRange::default(),
             usage: hal::StateTransition {
-                from: hal::TextureUses::UNINITIALIZED,
-                to: hal::TextureUses::COLOR_TARGET,
+                from: wgpu_types::TextureUses::UNINITIALIZED,
+                to: wgpu_types::TextureUses::COLOR_TARGET,
             },
         };
         unsafe {
@@ -688,7 +688,7 @@ impl<A: hal::Api> Example<A> {
             label: None,
             format: self.surface_format,
             dimension: wgpu_types::TextureViewDimension::D2,
-            usage: hal::TextureUses::COLOR_TARGET,
+            usage: wgpu_types::TextureUses::COLOR_TARGET,
             range: wgpu_types::ImageSubresourceRange::default(),
         };
         let surface_tex_view = unsafe {
@@ -707,7 +707,7 @@ impl<A: hal::Api> Example<A> {
             color_attachments: &[Some(hal::ColorAttachment {
                 target: hal::Attachment {
                     view: &surface_tex_view,
-                    usage: hal::TextureUses::COLOR_TARGET,
+                    usage: wgpu_types::TextureUses::COLOR_TARGET,
                 },
                 resolve_target: None,
                 ops: hal::AttachmentOps::STORE,
@@ -746,8 +746,8 @@ impl<A: hal::Api> Example<A> {
             texture: surface_tex.borrow(),
             range: wgpu_types::ImageSubresourceRange::default(),
             usage: hal::StateTransition {
-                from: hal::TextureUses::COLOR_TARGET,
-                to: hal::TextureUses::PRESENT,
+                from: wgpu_types::TextureUses::COLOR_TARGET,
+                to: wgpu_types::TextureUses::PRESENT,
             },
         };
         unsafe {
