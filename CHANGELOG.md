@@ -86,7 +86,7 @@ By @brodycj in [#6925](https://github.com/gfx-rs/wgpu/pull/6925).
 
 ### Documentation
 
-- Improved documentation around pipeline caches. By @DJMcNab in [#6978](https://github.com/gfx-rs/wgpu/pull/6978).
+- Improved documentation around pipeline caches and `TextureBlitter`. By @DJMcNab in [#6978](https://github.com/gfx-rs/wgpu/pull/6978) and [#7003](https://github.com/gfx-rs/wgpu/pull/7003).
 
 - Added a hello window example. By @laycookie in [#6992](https://github.com/gfx-rs/wgpu/pull/6992).
 
