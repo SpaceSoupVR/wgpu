@@ -40,6 +40,11 @@ Bottom level categories:
 
 ## Unreleased
 
+### v24.0.3 (2025-03-19)
+
+#### Bug Fixes
+- Fix drop order in `Surface`, solving segfaults on exit on some systems. By @ed-2100 in [#6997](https://github.com/gfx-rs/wgpu/pull/6997)
+
 ### v24.0.2 (2025-02-26)
 
 #### Bug Fixes
