@@ -40,6 +40,17 @@ Bottom level categories:
 
 ## Unreleased
 
+### Major Changes
+
+#### Hashmaps Removed from APIs
+
+Both `PipelineCompilationOptions::constants` and `ShaderSource::Glsl::defines` now take
+slices of key-value pairs instead of `hashmap`s. This is to prepare for `no_std`
+support and allow us to keep which `hashmap` hasher and such as implementation details. It
+also allows more easily creating these structures inline.
+
+By @cwfitzgerald in [#7133](https://github.com/gfx-rs/wgpu/pull/7133)
+
 ### New Features
 
 #### General
