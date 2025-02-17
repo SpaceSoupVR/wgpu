@@ -40,9 +40,10 @@ Bottom level categories:
 
 ## Unreleased
 
-### v24.0.2  (2025-02-??)
+### v24.0.2 (2025-02-26)
 
 #### Bug Fixes
+- Fix GLES renderpass clears causing violation of `max_color_attachments` limit. By @adrian17 in [#6994](https://github.com/gfx-rs/wgpu/pull/6994).
 - Fix a possible deadlock within `Queue::write_texture`. By @metamuffin in [#7004](https://github.com/gfx-rs/wgpu/pull/7004)
 
 ### v24.0.1 (2025-01-22)
