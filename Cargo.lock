@@ -4039,7 +4039,7 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "24.0.0"
+version = "24.0.2"
 dependencies = [
  "arrayvec",
  "bit-vec 0.8.0",
@@ -4096,7 +4096,7 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "24.0.0"
+version = "24.0.2"
 dependencies = [
  "android_system_properties",
  "arrayvec",
