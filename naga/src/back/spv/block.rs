@@ -1930,6 +1930,13 @@ impl BlockContext<'_> {
                 ));
                 id
             }
+            crate::Expression::RayQueryVertexPositions { query, committed } => {
+                self.writer.require_any(
+                    "RayQueryVertexPositions",
+                    &[spirv::Capability::RayQueryPositionFetchKHR],
+                )?;
+                self.write_ray_query_return_vertex_position(query, block, committed)
+            }
         };
 
         self.cached[expr_handle] = id;

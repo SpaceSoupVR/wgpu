@@ -488,8 +488,8 @@ impl LocalType {
                 class,
             } => LocalType::Image(LocalImageType::from_inner(dim, arrayed, class)),
             crate::TypeInner::Sampler { comparison: _ } => LocalType::Sampler,
-            crate::TypeInner::AccelerationStructure => LocalType::AccelerationStructure,
-            crate::TypeInner::RayQuery => LocalType::RayQuery,
+            crate::TypeInner::AccelerationStructure { .. } => LocalType::AccelerationStructure,
+            crate::TypeInner::RayQuery { .. } => LocalType::RayQuery,
             crate::TypeInner::Array { .. }
             | crate::TypeInner::Struct { .. }
             | crate::TypeInner::BindingArray { .. } => return None,

@@ -148,6 +148,8 @@ By @jamienicol in [#6929](https://github.com/gfx-rs/wgpu/pull/6929) and [#7080](
 - Added `CommandEncoder::transition_resources()` for native API interop, and allowing users to slightly optimize barriers. By @JMS55 in [#6678](https://github.com/gfx-rs/wgpu/pull/6678).
 - Add `wgpu_hal::vulkan::Adapter::texture_format_as_raw` for native API interop. By @JMS55 in [#7228](https://github.com/gfx-rs/wgpu/pull/7228).
 
+- Support getting vertices of the hit triangle when raytracing. By @Vecvec in [#7183](https://github.com/gfx-rs/wgpu/pull/7183) .
+
 #### Naga
 
 - Add support for unsigned types when calling textureLoad with the level parameter. By @ygdrasil-io in [#7058](https://github.com/gfx-rs/wgpu/pull/7058).

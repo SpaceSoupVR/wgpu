@@ -161,6 +161,8 @@ bitflags::bitflags! {
         const TEXTURE_ATOMIC = 1 << 23;
         /// Support for atomic operations on 64-bit images.
         const TEXTURE_INT64_ATOMIC = 1 << 24;
+        /// Support for ray queries returning vertex position
+        const RAY_HIT_VERTEX_POSITION = 1 << 25;
     }
 }
 
@@ -403,8 +405,8 @@ impl crate::TypeInner {
             Self::Array { .. }
             | Self::Image { .. }
             | Self::Sampler { .. }
-            | Self::AccelerationStructure
-            | Self::RayQuery
+            | Self::AccelerationStructure { .. }
+            | Self::RayQuery { .. }
             | Self::BindingArray { .. } => false,
         }
     }

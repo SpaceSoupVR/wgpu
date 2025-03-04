@@ -246,6 +246,9 @@ impl super::Validator {
         if let Some(ty) = special_types.ray_intersection {
             validate_type(ty)?;
         }
+        if let Some(ty) = special_types.ray_vertex_return {
+            validate_type(ty)?;
+        }
 
         for (handle, _node) in diagnostic_filters.iter() {
             let DiagnosticFilterNode { inner: _, parent } = diagnostic_filters[handle];
@@ -310,8 +313,8 @@ impl super::Validator {
             | crate::TypeInner::Atomic { .. }
             | crate::TypeInner::Image { .. }
             | crate::TypeInner::Sampler { .. }
-            | crate::TypeInner::AccelerationStructure
-            | crate::TypeInner::RayQuery => None,
+            | crate::TypeInner::AccelerationStructure { .. }
+            | crate::TypeInner::RayQuery { .. } => None,
             crate::TypeInner::Pointer { base, space: _ } => {
                 handle.check_dep(base)?;
                 None
@@ -557,6 +560,10 @@ impl super::Validator {
                 handle.check_dep(array)?;
             }
             crate::Expression::RayQueryGetIntersection {
+                query,
+                committed: _,
+            }
+            | crate::Expression::RayQueryVertexPositions {
                 query,
                 committed: _,
             } => {

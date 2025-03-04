@@ -243,8 +243,12 @@ pub enum Type<'a> {
     Sampler {
         comparison: bool,
     },
-    AccelerationStructure,
-    RayQuery,
+    AccelerationStructure {
+        vertex_return: bool,
+    },
+    RayQuery {
+        vertex_return: bool,
+    },
     RayDesc,
     RayIntersection,
     BindingArray {

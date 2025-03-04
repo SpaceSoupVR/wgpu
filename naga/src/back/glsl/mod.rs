@@ -1082,8 +1082,8 @@ impl<'a, W: Write> Writer<'a, W> {
             | TypeInner::Struct { .. }
             | TypeInner::Image { .. }
             | TypeInner::Sampler { .. }
-            | TypeInner::AccelerationStructure
-            | TypeInner::RayQuery
+            | TypeInner::AccelerationStructure { .. }
+            | TypeInner::RayQuery { .. }
             | TypeInner::BindingArray { .. } => {
                 return Err(Error::Custom(format!("Unable to write type {inner:?}")))
             }
@@ -4017,7 +4017,8 @@ impl<'a, W: Write> Writer<'a, W> {
                 write!(self.out, ".length())")?
             }
             // not supported yet
-            Expression::RayQueryGetIntersection { .. } => unreachable!(),
+            Expression::RayQueryGetIntersection { .. }
+            | Expression::RayQueryVertexPositions { .. } => unreachable!(),
         }
 
         Ok(())

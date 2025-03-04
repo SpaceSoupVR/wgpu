@@ -106,6 +106,7 @@ pub struct PhysicalDeviceFeatures {
     /// to Vulkan 1.3.
     zero_initialize_workgroup_memory:
         Option<vk::PhysicalDeviceZeroInitializeWorkgroupMemoryFeatures<'static>>,
+    position_fetch: Option<vk::PhysicalDeviceRayTracingPositionFetchFeaturesKHR<'static>>,
 
     /// Features provided by `VK_KHR_shader_atomic_int64`, promoted to Vulkan 1.2.
     shader_atomic_int64: Option<vk::PhysicalDeviceShaderAtomicInt64Features<'static>>,
@@ -171,6 +172,9 @@ impl PhysicalDeviceFeatures {
             info = info.push_next(feature);
         }
         if let Some(ref mut feature) = self.shader_atomic_int64 {
+            info = info.push_next(feature);
+        }
+        if let Some(ref mut feature) = self.position_fetch {
             info = info.push_next(feature);
         }
         if let Some(ref mut feature) = self.shader_image_atomic_int64 {
@@ -482,6 +486,14 @@ impl PhysicalDeviceFeatures {
             } else {
                 None
             },
+            position_fetch: if enabled_extensions.contains(&khr::ray_tracing_position_fetch::NAME) {
+                Some(
+                    vk::PhysicalDeviceRayTracingPositionFetchFeaturesKHR::default()
+                        .ray_tracing_position_fetch(true),
+                )
+            } else {
+                None
+            },
             mesh_shader: if enabled_extensions.contains(&ext::mesh_shader::NAME) {
                 let needed = requested_features.contains(wgt::Features::MESH_SHADER);
                 Some(
@@ -643,6 +655,10 @@ impl PhysicalDeviceFeatures {
         features.set(
             F::CONSERVATIVE_RASTERIZATION,
             caps.supports_extension(ext::conservative_rasterization::NAME),
+        );
+        features.set(
+            F::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN,
+            caps.supports_extension(khr::ray_tracing_position_fetch::NAME),
         );
 
         if let Some(ref descriptor_indexing) = self.descriptor_indexing {
@@ -1049,6 +1065,10 @@ impl PhysicalDeviceProperties {
             extensions.push(khr::ray_query::NAME);
         }
 
+        if requested_features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
+            extensions.push(khr::ray_tracing_position_fetch::NAME)
+        }
+
         // Require `VK_EXT_conservative_rasterization` if the associated feature was requested
         if requested_features.contains(wgt::Features::CONSERVATIVE_RASTERIZATION) {
             extensions.push(ext::conservative_rasterization::NAME);
@@ -1452,6 +1472,13 @@ impl super::InstanceShared {
                 let next = features
                     .acceleration_structure
                     .insert(vk::PhysicalDeviceAccelerationStructureFeaturesKHR::default());
+                features2 = features2.push_next(next);
+            }
+
+            if capabilities.supports_extension(khr::ray_tracing_position_fetch::NAME) {
+                let next = features
+                    .position_fetch
+                    .insert(vk::PhysicalDeviceRayTracingPositionFetchFeaturesKHR::default());
                 features2 = features2.push_next(next);
             }
 
@@ -1958,6 +1985,9 @@ impl super::Adapter {
             );
             if features.contains(wgt::Features::EXPERIMENTAL_RAY_QUERY) {
                 capabilities.push(spv::Capability::RayQueryKHR);
+            }
+            if features.contains(wgt::Features::EXPERIMENTAL_RAY_HIT_VERTEX_RETURN) {
+                capabilities.push(spv::Capability::RayQueryPositionFetchKHR)
             }
             spv::Options {
                 lang_version: if features
