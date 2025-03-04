@@ -257,6 +257,12 @@ impl super::Instance {
         // VK_KHR_surface
         extensions.push(khr::surface::NAME);
 
+        // Extensions needed for drm support
+        extensions.push(khr::display::NAME);
+        extensions.push(ext::physical_device_drm::NAME);
+        extensions.push(khr::get_display_properties2::NAME);
+        extensions.push(ext::acquire_drm_display::NAME);
+
         // Platform-specific WSI extensions
         if cfg!(all(
             unix,
@@ -550,7 +556,10 @@ impl super::Instance {
         Ok(self.create_surface_from_vk_surface_khr(surface))
     }
 
-    fn create_surface_from_vk_surface_khr(&self, surface: vk::SurfaceKHR) -> super::Surface {
+    pub(super) fn create_surface_from_vk_surface_khr(
+        &self,
+        surface: vk::SurfaceKHR,
+    ) -> super::Surface {
         let functor = khr::surface::Instance::new(&self.shared.entry, &self.shared.raw);
         super::Surface {
             raw: surface,

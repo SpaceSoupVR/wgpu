@@ -794,6 +794,26 @@ impl dispatch::InstanceInterface for ContextWgpuCore {
                     .instance_create_surface(raw_display_handle, raw_window_handle, None)
             },
 
+            #[cfg(all(unix, not(target_vendor = "apple"), not(target_family = "wasm")))]
+            SurfaceTargetUnsafe::Drm {
+                fd,
+                plane,
+                connector_id,
+                width,
+                height,
+                refresh_rate,
+            } => unsafe {
+                self.0.instance_create_surface_from_drm(
+                    fd,
+                    plane,
+                    connector_id,
+                    width,
+                    height,
+                    refresh_rate,
+                    None,
+                )
+            },
+
             #[cfg(metal)]
             SurfaceTargetUnsafe::CoreAnimationLayer(layer) => unsafe {
                 self.0.instance_create_surface_metal(layer, None)
