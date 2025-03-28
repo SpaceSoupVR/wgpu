@@ -40,6 +40,9 @@ Bottom level categories:
 
 ## Unreleased
 
+- Added an example that shows how to handle datasets too large to fit in a single `GPUBuffer` by distributing it across many buffers, and then having the shader receive them as a `binding_array` of storage buffers.  By @alphastrata in [#6138](https://github.com/gfx-rs/wgpu/pull/6138)
+
+
 ### Major Features
 
 #### Hashmaps Removed from APIs
@@ -185,6 +188,7 @@ By @wumpf in [#7144](https://github.com/gfx-rs/wgpu/pull/7144)
 - Add `wgpu_hal::vulkan::Adapter::texture_format_as_raw` for native API interop. By @JMS55 in [#7228](https://github.com/gfx-rs/wgpu/pull/7228).
 
 - Support getting vertices of the hit triangle when raytracing. By @Vecvec in [#7183](https://github.com/gfx-rs/wgpu/pull/7183) .
+
 
 #### Naga
 
