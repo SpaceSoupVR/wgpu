@@ -1843,11 +1843,11 @@ impl dispatch::DeviceInterface for WebDevice {
         .into()
     }
 
-    unsafe fn create_shader_module_spirv(
+    unsafe fn create_shader_module_passthrough(
         &self,
-        _desc: &crate::ShaderModuleDescriptorSpirV<'_>,
+        _desc: &crate::ShaderModuleDescriptorPassthrough<'_>,
     ) -> dispatch::DispatchShaderModule {
-        unreachable!("SPIRV_SHADER_PASSTHROUGH is not enabled for this backend")
+        unreachable!("No XXX_SHADER_PASSTHROUGH feature enabled for this backend")
     }
 
     fn create_bind_group_layout(

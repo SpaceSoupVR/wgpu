@@ -1,5 +1,5 @@
 use alloc::{
-    borrow::Cow::Borrowed,
+    borrow::Cow::{self, Borrowed},
     boxed::Box,
     format,
     string::{String, ToString as _},
@@ -1043,36 +1043,30 @@ impl dispatch::DeviceInterface for CoreDevice {
         .into()
     }
 
-    unsafe fn create_shader_module_spirv(
+    unsafe fn create_shader_module_passthrough(
         &self,
-        desc: &crate::ShaderModuleDescriptorSpirV<'_>,
+        desc: &crate::ShaderModuleDescriptorPassthrough<'_>,
     ) -> dispatch::DispatchShaderModule {
-        let descriptor = wgc::pipeline::ShaderModuleDescriptor {
-            label: desc.label.map(Borrowed),
-            // Doesn't matter the value since spirv shaders aren't mutated to include
-            // runtime checks
-            runtime_checks: wgt::ShaderRuntimeChecks::unchecked(),
-        };
+        let desc = desc.map_label(|l| l.map(Cow::from));
         let (id, error) = unsafe {
-            self.context.0.device_create_shader_module_spirv(
-                self.id,
-                &descriptor,
-                Borrowed(&desc.source),
-                None,
-            )
+            self.context
+                .0
+                .device_create_shader_module_passthrough(self.id, &desc, None)
         };
+
         let compilation_info = match error {
             Some(cause) => {
                 self.context.handle_error(
                     &self.error_sink,
                     cause.clone(),
-                    desc.label,
-                    "Device::create_shader_module_spirv",
+                    desc.label().as_deref(),
+                    "Device::create_shader_module_passthrough",
                 );
                 CompilationInfo::from(cause)
             }
             None => CompilationInfo { messages: vec![] },
         };
+
         CoreShaderModule {
             context: self.context.clone(),
             id,
