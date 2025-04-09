@@ -18,9 +18,9 @@ use wgt::WasmNotSendSync;
 use crate::{
     api,
     dispatch::{self, BufferMappedRangeInterface},
-    BindingResource, BufferBinding, BufferDescriptor, CompilationInfo, CompilationMessage,
+    BindingResource, Blas, BufferBinding, BufferDescriptor, CompilationInfo, CompilationMessage,
     CompilationMessageType, ErrorSource, Features, Label, LoadOp, MapMode, Operations,
-    ShaderSource, SurfaceTargetUnsafe, TextureDescriptor,
+    ShaderSource, SurfaceTargetUnsafe, TextureDescriptor, Tlas,
 };
 
 #[derive(Clone)]
@@ -265,6 +265,30 @@ impl ContextWgpuCore {
                 hal_command_encoder_callback,
             )
         }
+    }
+
+    pub unsafe fn blas_as_hal<
+        A: wgc::hal_api::HalApi,
+        F: FnOnce(Option<&A::AccelerationStructure>) -> R,
+        R,
+    >(
+        &self,
+        blas: &CoreBlas,
+        hal_blas_callback: F,
+    ) -> R {
+        unsafe { self.0.blas_as_hal::<A, F, R>(blas.id, hal_blas_callback) }
+    }
+
+    pub unsafe fn tlas_as_hal<
+        A: wgc::hal_api::HalApi,
+        F: FnOnce(Option<&A::AccelerationStructure>) -> R,
+        R,
+    >(
+        &self,
+        tlas: &CoreTlas,
+        hal_tlas_callback: F,
+    ) -> R {
+        unsafe { self.0.tlas_as_hal::<A, F, R>(tlas.id, hal_tlas_callback) }
     }
 
     pub fn generate_report(&self) -> wgc::global::GlobalReport {
@@ -2476,6 +2500,30 @@ impl dispatch::CommandEncoderInterface for CoreCommandEncoder {
                 &self.error_sink,
                 cause,
                 "CommandEncoder::resolve_query_set",
+            );
+        }
+    }
+
+    fn mark_acceleration_structures_built<'a>(
+        &self,
+        blas: &mut dyn Iterator<Item = &'a Blas>,
+        tlas: &mut dyn Iterator<Item = &'a Tlas>,
+    ) {
+        let blas = blas
+            .map(|b| b.inner.as_core().id)
+            .collect::<SmallVec<[_; 4]>>();
+        let tlas = tlas
+            .map(|t| t.shared.inner.as_core().id)
+            .collect::<SmallVec<[_; 4]>>();
+        if let Err(cause) = self
+            .context
+            .0
+            .command_encoder_mark_acceleration_structures_built(self.id, &blas, &tlas)
+        {
+            self.context.handle_error_nolabel(
+                &self.error_sink,
+                cause,
+                "CommandEncoder::build_acceleration_structures_unsafe_tlas",
             );
         }
     }
