@@ -308,6 +308,7 @@ By @FL33TW00D, @ErichDonGubler, and @cwfitzgerald in [#5701](https://github.com/
 - Allow abstract types to be used for WGSL switch statement selector and case selector expressions. By @jamienicol in [#7250](https://github.com/gfx-rs/wgpu/pull/7250).
 - Apply automatic conversions to `let` declarations, and accept `vecN()` as a constructor for vectors (in any context). By @andyleiserson in [#7367](https://github.com/gfx-rs/wgpu/pull/7367).
 - The `&&` and `||` operators are no longer allowed on vectors. By @andyleiserson in [#7368](https://github.com/gfx-rs/wgpu/pull/7368).
+- Prevent ray intersection function overwriting each other. By @Vecvec in [#7497](https://github.com/gfx-rs/wgpu/pull/7497).
 
 #### General
 
