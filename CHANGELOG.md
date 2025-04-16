@@ -58,6 +58,12 @@ Naga now infers the correct binding layout when a resource appears only in an as
 
 - Removed `MaintainBase` in favor of using `PollType`. By @waywardmonkeys in [#7508](https://github.com/gfx-rs/wgpu/pull/7508).
 
+### Bug Fixes
+
+#### Naga
+
+- Allow scalars as the first argument of the `distance` built-in function. By @bernhl in [#7530](https://github.com/gfx-rs/wgpu/pull/7530).
+
 ## v25.0.1 (2025-04-11)
 
 ### Bug Fixes
