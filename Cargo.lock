@@ -3024,7 +3024,6 @@ dependencies = [
  "fixedbitset 0.5.7",
  "hashbrown",
  "indexmap",
- "serde",
 ]
 
 [[package]]
