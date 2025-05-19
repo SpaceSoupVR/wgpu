@@ -109,7 +109,6 @@ mod arena;
 mod as_diagnostic_file_path;
 pub mod back;
 pub mod common;
-#[cfg(feature = "compact")]
 pub mod compact;
 pub mod diagnostic_filter;
 pub mod error;
