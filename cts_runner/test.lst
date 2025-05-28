@@ -17,3 +17,4 @@ webgpu:api,operation,rendering,color_target_state:blend_constant,setting:*
 webgpu:api,operation,rendering,depth:*
 webgpu:api,operation,rendering,draw:*
 webgpu:api,operation,uncapturederror:*
+webgpu:shader,execution,flow_control,return:*
