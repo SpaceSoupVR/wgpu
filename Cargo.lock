@@ -5007,6 +5007,7 @@ dependencies = [
  "wasm-bindgen-test",
  "web-sys",
  "wgpu",
+ "wgpu-hal",
  "wgpu-macros",
 ]
 
