@@ -4,7 +4,7 @@ use crate::ray_tracing::AsBuildContext;
 use wgpu::util::{BufferInitDescriptor, DeviceExt};
 use wgpu::*;
 use wgpu_test::{
-    fail, gpu_test, FailureCase, GpuTestConfiguration, TestParameters, TestingContext,
+    fail, fail_if, gpu_test, FailureCase, GpuTestConfiguration, TestParameters, TestingContext,
 };
 
 #[gpu_test]
@@ -603,4 +603,107 @@ fn only_tlas_vertex_return(ctx: TestingContext) {
         },
         None,
     );
+}
+
+#[gpu_test]
+static EXTRA_FORMAT_BUILD: GpuTestConfiguration = GpuTestConfiguration::new()
+    .parameters(
+        TestParameters::default()
+            .test_features_limits()
+            .features(
+                wgpu::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE
+                    | wgpu::Features::EXTENDED_ACCELERATION_STRUCTURE_VERTEX_FORMATS,
+            )
+            // https://github.com/gfx-rs/wgpu/issues/6727
+            .skip(FailureCase::backend_adapter(wgpu::Backends::VULKAN, "AMD")),
+    )
+    .run_sync(|ctx| test_as_build_format_stride(ctx, VertexFormat::Snorm16x4, 6, false));
+
+#[gpu_test]
+static MISALIGNED_BUILD: GpuTestConfiguration = GpuTestConfiguration::new()
+    .parameters(
+        TestParameters::default()
+            .test_features_limits()
+            .features(wgpu::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE)
+            // https://github.com/gfx-rs/wgpu/issues/6727
+            .skip(FailureCase::backend_adapter(wgpu::Backends::VULKAN, "AMD")),
+    )
+    // Larger than the minimum size, but not aligned as required
+    .run_sync(|ctx| test_as_build_format_stride(ctx, VertexFormat::Float32x3, 13, true));
+
+#[gpu_test]
+static TOO_SMALL_STRIDE_BUILD: GpuTestConfiguration = GpuTestConfiguration::new()
+    .parameters(
+        TestParameters::default()
+            .test_features_limits()
+            .features(wgpu::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE)
+            // https://github.com/gfx-rs/wgpu/issues/6727
+            .skip(FailureCase::backend_adapter(wgpu::Backends::VULKAN, "AMD")),
+    )
+    // Aligned as required, but smaller than minimum size
+    .run_sync(|ctx| test_as_build_format_stride(ctx, VertexFormat::Float32x3, 8, true));
+
+fn test_as_build_format_stride(
+    ctx: TestingContext,
+    format: VertexFormat,
+    stride: BufferAddress,
+    invalid_combination: bool,
+) {
+    let vertices = ctx.device.create_buffer_init(&BufferInitDescriptor {
+        label: None,
+        contents: &vec![0; (format.min_acceleration_structure_vertex_stride() * 3) as usize],
+        usage: BufferUsages::BLAS_INPUT,
+    });
+
+    let blas_size = BlasTriangleGeometrySizeDescriptor {
+        // The fourth component is ignored, and it allows us to have a smaller stride.
+        vertex_format: format,
+        vertex_count: 3,
+        index_format: None,
+        index_count: None,
+        flags: wgpu::AccelerationStructureGeometryFlags::empty(),
+    };
+
+    let blas = ctx.device.create_blas(
+        &CreateBlasDescriptor {
+            label: Some("BLAS"),
+            flags: wgpu::AccelerationStructureFlags::PREFER_FAST_TRACE,
+            update_mode: AccelerationStructureUpdateMode::Build,
+        },
+        BlasGeometrySizeDescriptors::Triangles {
+            descriptors: vec![blas_size.clone()],
+        },
+    );
+
+    let mut command_encoder = ctx
+        .device
+        .create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("BLAS_1"),
+        });
+    fail_if(
+        &ctx.device,
+        invalid_combination,
+        || {
+            command_encoder.build_acceleration_structures(
+                &[BlasBuildEntry {
+                    blas: &blas,
+                    geometry: BlasGeometries::TriangleGeometries(vec![BlasTriangleGeometry {
+                        size: &blas_size,
+                        vertex_buffer: &vertices,
+                        first_vertex: 0,
+                        vertex_stride: stride,
+                        index_buffer: None,
+                        first_index: None,
+                        transform_buffer: None,
+                        transform_buffer_offset: None,
+                    }]),
+                }],
+                &[],
+            )
+        },
+        None,
+    );
+    if !invalid_combination {
+        ctx.queue.submit([command_encoder.finish()]);
+    }
 }
