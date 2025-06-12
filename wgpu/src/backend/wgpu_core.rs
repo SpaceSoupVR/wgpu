@@ -11,13 +11,16 @@ use core::{error::Error, fmt, future::ready, ops::Range, pin::Pin, ptr::NonNull,
 
 use arrayvec::ArrayVec;
 use smallvec::SmallVec;
-use wgc::{command::bundle_ffi::*, error::ContextErrorSource, pipeline::CreateShaderModuleError};
+use wgc::{
+    command::bundle_ffi::*, error::ContextErrorSource, pipeline::CreateShaderModuleError,
+    resource::BlasPrepareCompactResult,
+};
 use wgt::WasmNotSendSync;
 
 use crate::util::Mutex;
 use crate::{
     api,
-    dispatch::{self, BufferMappedRangeInterface},
+    dispatch::{self, BlasCompactCallback, BufferMappedRangeInterface},
     BindingResource, Blas, BufferBinding, BufferDescriptor, CompilationInfo, CompilationMessage,
     CompilationMessageType, ErrorSource, Features, Label, LoadOp, MapMode, Operations,
     ShaderSource, SurfaceTargetUnsafe, TextureDescriptor, Tlas,
@@ -644,7 +647,7 @@ pub struct CoreCommandEncoder {
 pub struct CoreBlas {
     pub(crate) context: ContextWgpuCore,
     id: wgc::id::BlasId,
-    // error_sink: ErrorSink,
+    error_sink: ErrorSink,
 }
 
 #[derive(Debug)]
@@ -1547,7 +1550,7 @@ impl dispatch::DeviceInterface for CoreDevice {
             CoreBlas {
                 context: self.context.clone(),
                 id,
-                // error_sink: Arc::clone(&self.error_sink),
+                error_sink: Arc::clone(&self.error_sink),
             }
             .into(),
         )
@@ -1931,6 +1934,27 @@ impl dispatch::QueueInterface for CoreQueue {
             .0
             .queue_on_submitted_work_done(self.id, callback);
     }
+
+    fn compact_blas(&self, blas: &dispatch::DispatchBlas) -> (Option<u64>, dispatch::DispatchBlas) {
+        let (id, handle, error) =
+            self.context
+                .0
+                .queue_compact_blas(self.id, blas.as_core().id, None);
+
+        if let Some(cause) = error {
+            self.context
+                .handle_error_nolabel(&self.error_sink, cause, "Queue::compact_blas");
+        }
+        (
+            handle,
+            CoreBlas {
+                context: self.context.clone(),
+                id,
+                error_sink: Arc::clone(&self.error_sink),
+            }
+            .into(),
+        )
+    }
 }
 
 impl Drop for CoreQueue {
@@ -2102,7 +2126,39 @@ impl Drop for CoreTexture {
     }
 }
 
-impl dispatch::BlasInterface for CoreBlas {}
+impl dispatch::BlasInterface for CoreBlas {
+    fn prepare_compact_async(&self, callback: BlasCompactCallback) {
+        let callback: Option<wgc::resource::BlasCompactCallback> =
+            Some(Box::new(|status: BlasPrepareCompactResult| {
+                let res = status.map_err(|_| crate::BlasAsyncError);
+                callback(res);
+            }));
+
+        match self.context.0.blas_prepare_compact_async(self.id, callback) {
+            Ok(_) => (),
+            Err(cause) => self.context.handle_error_nolabel(
+                &self.error_sink,
+                cause,
+                "Blas::prepare_compact_async",
+            ),
+        }
+    }
+
+    fn ready_for_compaction(&self) -> bool {
+        match self.context.0.ready_for_compaction(self.id) {
+            Ok(ready) => ready,
+            Err(cause) => {
+                self.context.handle_error_nolabel(
+                    &self.error_sink,
+                    cause,
+                    "Blas::ready_for_compaction",
+                );
+                // A BLAS is definitely not ready for compaction if it's not valid
+                false
+            }
+        }
+    }
+}
 
 impl Drop for CoreBlas {
     fn drop(&mut self) {

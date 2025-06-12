@@ -27,7 +27,10 @@ use wgt::Backends;
 use js_sys::Promise;
 use wasm_bindgen::{prelude::*, JsCast};
 
-use crate::{dispatch, Blas, SurfaceTargetUnsafe, Tlas};
+use crate::{
+    dispatch::{self, BlasCompactCallback},
+    Blas, SurfaceTargetUnsafe, Tlas,
+};
 
 use defined_non_null_js_value::DefinedNonNullJsValue;
 
@@ -2581,6 +2584,13 @@ impl dispatch::QueueInterface for WebQueue {
     fn on_submitted_work_done(&self, _callback: dispatch::BoxSubmittedWorkDoneCallback) {
         unimplemented!("on_submitted_work_done is not yet implemented");
     }
+
+    fn compact_blas(
+        &self,
+        _blas: &dispatch::DispatchBlas,
+    ) -> (Option<u64>, dispatch::DispatchBlas) {
+        unimplemented!("Raytracing not implemented for web")
+    }
 }
 impl Drop for WebQueue {
     fn drop(&mut self) {
@@ -2727,7 +2737,14 @@ impl Drop for WebTexture {
     }
 }
 
-impl dispatch::BlasInterface for WebBlas {}
+impl dispatch::BlasInterface for WebBlas {
+    fn prepare_compact_async(&self, _callback: BlasCompactCallback) {
+        unimplemented!("Raytracing not implemented for web")
+    }
+    fn ready_for_compaction(&self) -> bool {
+        unimplemented!("Raytracing not implemented for web")
+    }
+}
 impl Drop for WebBlas {
     fn drop(&mut self) {
         // no-op

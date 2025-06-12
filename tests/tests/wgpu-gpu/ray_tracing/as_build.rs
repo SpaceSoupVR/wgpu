@@ -42,6 +42,160 @@ fn unbuilt_blas(ctx: TestingContext) {
 }
 
 #[gpu_test]
+static UNBUILT_BLAS_COMPACTION: GpuTestConfiguration = GpuTestConfiguration::new()
+    .parameters(
+        TestParameters::default()
+            .test_features_limits()
+            .features(wgpu::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE)
+            // https://github.com/gfx-rs/wgpu/issues/6727
+            .skip(FailureCase::backend_adapter(wgpu::Backends::VULKAN, "AMD")),
+    )
+    .run_sync(unbuilt_blas_compaction);
+
+fn unbuilt_blas_compaction(ctx: TestingContext) {
+    let as_ctx = AsBuildContext::new(
+        &ctx,
+        AccelerationStructureFlags::ALLOW_COMPACTION,
+        AccelerationStructureFlags::empty(),
+    );
+
+    fail(
+        &ctx.device,
+        || {
+            // Prepare checks the BLAS has been built
+            as_ctx.blas.prepare_compaction_async(|_| {})
+        },
+        None,
+    );
+}
+
+#[gpu_test]
+static BLAS_COMPACTION_WITHOUT_FLAGS: GpuTestConfiguration = GpuTestConfiguration::new()
+    .parameters(
+        TestParameters::default()
+            .test_features_limits()
+            .features(wgpu::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE)
+            // https://github.com/gfx-rs/wgpu/issues/6727
+            .skip(FailureCase::backend_adapter(wgpu::Backends::VULKAN, "AMD")),
+    )
+    .run_sync(blas_compaction_without_flags);
+
+fn blas_compaction_without_flags(ctx: TestingContext) {
+    let as_ctx = AsBuildContext::new(
+        &ctx,
+        AccelerationStructureFlags::empty(),
+        AccelerationStructureFlags::empty(),
+    );
+
+    let mut encoder = ctx
+        .device
+        .create_command_encoder(&CommandEncoderDescriptor::default());
+
+    encoder.build_acceleration_structures([&as_ctx.blas_build_entry()], []);
+
+    ctx.queue.submit([encoder.finish()]);
+
+    fail(
+        &ctx.device,
+        || {
+            // Prepare checks whether te BLAS is able to be compacted
+            as_ctx.blas.prepare_compaction_async(|_| {})
+        },
+        None,
+    );
+}
+
+#[gpu_test]
+static UNPREPARED_BLAS_COMPACTION: GpuTestConfiguration = GpuTestConfiguration::new()
+    .parameters(
+        TestParameters::default()
+            .test_features_limits()
+            .features(wgpu::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE)
+            // https://github.com/gfx-rs/wgpu/issues/6727
+            .skip(FailureCase::backend_adapter(wgpu::Backends::VULKAN, "AMD")),
+    )
+    .run_sync(unprepared_blas_compaction);
+
+fn unprepared_blas_compaction(ctx: TestingContext) {
+    let as_ctx = AsBuildContext::new(
+        &ctx,
+        AccelerationStructureFlags::ALLOW_COMPACTION,
+        AccelerationStructureFlags::empty(),
+    );
+
+    let mut encoder = ctx
+        .device
+        .create_command_encoder(&CommandEncoderDescriptor::default());
+
+    encoder.build_acceleration_structures([&as_ctx.blas_build_entry()], []);
+
+    ctx.queue.submit([encoder.finish()]);
+
+    fail(&ctx.device, || ctx.queue.compact_blas(&as_ctx.blas), None);
+}
+
+#[gpu_test]
+static BLAS_COMPACTION: GpuTestConfiguration = GpuTestConfiguration::new()
+    .parameters(
+        TestParameters::default()
+            .test_features_limits()
+            .features(wgpu::Features::EXPERIMENTAL_RAY_TRACING_ACCELERATION_STRUCTURE)
+            // https://github.com/gfx-rs/wgpu/issues/6727
+            .skip(FailureCase::backend_adapter(wgpu::Backends::VULKAN, "AMD")),
+    )
+    .run_sync(blas_compaction);
+
+fn blas_compaction(ctx: TestingContext) {
+    let as_ctx = AsBuildContext::new(
+        &ctx,
+        AccelerationStructureFlags::ALLOW_COMPACTION,
+        AccelerationStructureFlags::empty(),
+    );
+
+    let mut encoder = ctx
+        .device
+        .create_command_encoder(&CommandEncoderDescriptor::default());
+
+    // Build the BLAS to be compacted (so compaction is valid).
+    encoder.build_acceleration_structures([&as_ctx.blas_build_entry()], []);
+
+    ctx.queue.submit([encoder.finish()]);
+
+    // Prepare the BLAS to be compacted.
+    let (send, recv) = std::sync::mpsc::channel();
+    as_ctx.blas.prepare_compaction_async(move |res| {
+        res.unwrap();
+        send.send(()).unwrap();
+    });
+
+    // On native this will trigger the callback.
+    ctx.device.poll(PollType::Wait).unwrap();
+    // Check that the callback actually gets called (this test will timeout if it doesn't).
+    recv.recv().unwrap();
+    // This should return true because the callback has been called, and we haven't rebuilt the BLAS
+    assert!(as_ctx.blas.ready_for_compaction());
+
+    let compacted = ctx.queue.compact_blas(&as_ctx.blas);
+
+    // This actually executes the compact call.
+    ctx.queue.submit([]);
+
+    let mut fail_encoder = ctx
+        .device
+        .create_command_encoder(&CommandEncoderDescriptor::default());
+
+    // Try to build the compacted BLAS, this should fail.
+    let mut build_entry = as_ctx.blas_build_entry();
+    build_entry.blas = &compacted;
+
+    fail(
+        &ctx.device,
+        || fail_encoder.build_acceleration_structures([&build_entry], []),
+        None,
+    );
+}
+
+#[gpu_test]
 static OUT_OF_ORDER_AS_BUILD: GpuTestConfiguration = GpuTestConfiguration::new()
     .parameters(
         TestParameters::default()
