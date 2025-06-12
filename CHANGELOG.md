@@ -56,6 +56,7 @@ Bottom level categories:
 #### Naga
 
 - When emitting GLSL, Uniform and Storage Buffer memory layouts are now emitted even if no explicit binding is given. By @cloone8 in [#7579](https://github.com/gfx-rs/wgpu/pull/7579).
+- Diagnostic rendering methods (i.e., `naga::{front::wgsl::ParseError,WithSpan}::emit_error_to_string_with_path`) now accept more types for their `path` argument via a new sealed `AsDiagnosticFilePath` trait. By @atlv24, @bushrat011899, and @ErichDonGubler in [#7643](https://github.com/gfx-rs/wgpu/pull/7643).
 - Add support for [quad operations](https://www.w3.org/TR/WGSL/#quad-builtin-functions) (requires `SUBGROUP` feature to be enabled). By @dzamkov and @valaphee in [#7683](https://github.com/gfx-rs/wgpu/pull/7683).
 - Add support for `atomicCompareExchangeWeak` in HLSL and GLSL backends. By @cryvosh in [#7658](https://github.com/gfx-rs/wgpu/pull/7658)
 
