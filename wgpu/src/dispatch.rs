@@ -336,15 +336,10 @@ pub trait CommandEncoderInterface: CommonTraits {
         tlas: &mut dyn Iterator<Item = &'a Tlas>,
     );
 
-    fn build_acceleration_structures_unsafe_tlas<'a>(
-        &self,
-        blas: &mut dyn Iterator<Item = &'a crate::BlasBuildEntry<'a>>,
-        tlas: &mut dyn Iterator<Item = &'a crate::TlasBuildEntry<'a>>,
-    );
     fn build_acceleration_structures<'a>(
         &self,
         blas: &mut dyn Iterator<Item = &'a crate::BlasBuildEntry<'a>>,
-        tlas: &mut dyn Iterator<Item = &'a crate::TlasPackage>,
+        tlas: &mut dyn Iterator<Item = &'a crate::Tlas>,
     );
 
     fn transition_resources<'a>(
