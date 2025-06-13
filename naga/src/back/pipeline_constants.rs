@@ -945,6 +945,19 @@ fn map_value_to_literal(value: f64, scalar: Scalar) -> Result<Literal, PipelineC
             let value = value as u32;
             Ok(Literal::U32(value))
         }
+        Scalar::F16 => {
+            // https://webidl.spec.whatwg.org/#js-float
+            if !value.is_finite() {
+                return Err(PipelineConstantError::SrcNeedsToBeFinite);
+            }
+
+            let value = half::f16::from_f64(value);
+            if !value.is_finite() {
+                return Err(PipelineConstantError::DstRangeTooSmall);
+            }
+
+            Ok(Literal::F16(value))
+        }
         Scalar::F32 => {
             // https://webidl.spec.whatwg.org/#js-float
             if !value.is_finite() {
@@ -966,7 +979,10 @@ fn map_value_to_literal(value: f64, scalar: Scalar) -> Result<Literal, PipelineC
 
             Ok(Literal::F64(value))
         }
-        _ => unreachable!(),
+        Scalar::ABSTRACT_FLOAT | Scalar::ABSTRACT_INT => {
+            unreachable!("abstract values should not be validated out of override processing")
+        }
+        _ => unreachable!("unrecognized scalar type for override"),
     }
 }
 
