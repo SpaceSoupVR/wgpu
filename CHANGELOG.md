@@ -59,6 +59,10 @@ Bottom level categories:
 - Add acceleration structure limits. By @Vecvec in [#7845](https://github.com/gfx-rs/wgpu/pull/7845).
 - Add support for clip-distances feature for Vulkan and GL backends. By @dzamkov in [#7730](https://github.com/gfx-rs/wgpu/pull/7730)
 
+#### Vulkan
+
+- Add ways to initialise the instance and open the adapter with callbacks to add extensions. By @Vecvec in [#7829](https://github.com/gfx-rs/wgpu/pull/7829). 
+
 ### Bug Fixes
 
 #### General
