@@ -44,6 +44,7 @@ Bottom level categories:
 
 - Fixed build error inside `wgpu::util::initialize_adapter_from_env` when `std` feature is not enabled. By @kpreid in [#7918](https://github.com/gfx-rs/wgpu/pull/7918).
 - Fixed build error occurring when the `profiling` dependency is configured to have profiling active. By @kpreid in [#7916](https://github.com/gfx-rs/wgpu/pull/7916).
+- Emit a validation error instead of panicking when a query set index is OOB. By @ErichDonGubler in [#7908](https://github.com/gfx-rs/wgpu/pull/7908).
 
 ## v26.0.0 (2025-07-09)
 
