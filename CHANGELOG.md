@@ -40,6 +40,8 @@ Bottom level categories:
 
 ## Unreleased
 
+## v26.0.1 (2025-07-10)
+
 ### Bug Fixes
 
 - Fixed build error inside `wgpu::util::initialize_adapter_from_env` when `std` feature is not enabled. By @kpreid in [#7918](https://github.com/gfx-rs/wgpu/pull/7918).
