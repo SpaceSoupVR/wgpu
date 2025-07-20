@@ -44,6 +44,7 @@ Bottom level categories:
 
 ### Bug Fixes
 
+- Fixed vulkan validation error regarding the swapchain in latest SDK. By @cwfitzgerald in [#7971](https://github.com/gfx-rs/wgpu/pull/7971).
 - Fixed flickering on AMD devices and crashes inside Renderdoc due to incorrect caching of `VkFramebuffer`s when the driver re-used image view handles. By @cwfitzgerald in [#7972](https://github.com/gfx-rs/wgpu/pull/7972).
   > [!WARNING]
   > There is formally a breaking change in `wgpu_hal::vulkan::Device::texture_from_raw` as there is now a `&self` receiver where
