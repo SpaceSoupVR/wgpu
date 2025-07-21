@@ -40,6 +40,16 @@ Bottom level categories:
 
 ## Unreleased
 
+## v26.0.2 (2025-07-26)
+
+### Bug Fixes
+
+- Fixed flickering on AMD devices and crashes inside Renderdoc due to incorrect caching of `VkFramebuffer`s when the driver re-used image view handles. By @cwfitzgerald in [#7972](https://github.com/gfx-rs/wgpu/pull/7972).
+  > [!WARNING]
+  > There is formally a breaking change in `wgpu_hal::vulkan::Device::texture_from_raw` as there is now a `&self` receiver where
+  > there previously wasn't one. This will not affect you unless you explicitly use this api. We have gone ahead with the release
+  > as the bug was pervasive and made wgpu unusable for the affected people on v26.
+
 ## v26.0.1 (2025-07-10)
 
 ### Bug Fixes
