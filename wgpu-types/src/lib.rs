@@ -615,6 +615,17 @@ pub struct Limits {
     /// This limit only affects the d3d12 backend. Using a large number will allow the device
     /// to create many bind groups at the cost of a large up-front allocation at device creation.
     pub max_non_sampler_bindings: u32,
+
+    /// The maximum total value of x*y*z for a given `draw_mesh_tasks` command
+    pub max_task_workgroup_total_count: u32,
+    /// The maximum value for each dimension of a `RenderPass::draw_mesh_tasks(x, y, z)` operation.
+    /// Defaults to 65535. Higher is "better".
+    pub max_task_workgroups_per_dimension: u32,
+    /// The maximum number of layers that can be output from a mesh shader
+    pub max_mesh_output_layers: u32,
+    /// The maximum number of views that can be used by a mesh shader
+    pub max_mesh_multiview_count: u32,
+
     /// The maximum number of primitive (ex: triangles, aabbs) a BLAS is allowed to have. Requesting
     /// more than 0 during device creation only makes sense if [`Features::EXPERIMENTAL_RAY_QUERY`]
     /// is enabled.
@@ -683,6 +694,10 @@ impl Limits {
     ///     max_subgroup_size: 0,
     ///     max_push_constant_size: 0,
     ///     max_non_sampler_bindings: 1_000_000,
+    ///     max_task_workgroup_total_count: 0,
+    ///     max_task_workgroups_per_dimension: 0,
+    ///     max_mesh_multiview_count: 0,
+    ///     max_mesh_output_layers: 0,
     ///     max_blas_primitive_count: 0,
     ///     max_blas_geometry_count: 0,
     ///     max_tlas_instance_count: 0,
@@ -731,6 +746,12 @@ impl Limits {
             max_subgroup_size: 0,
             max_push_constant_size: 0,
             max_non_sampler_bindings: 1_000_000,
+
+            max_task_workgroup_total_count: 0,
+            max_task_workgroups_per_dimension: 0,
+            max_mesh_multiview_count: 0,
+            max_mesh_output_layers: 0,
+
             max_blas_primitive_count: 0,
             max_blas_geometry_count: 0,
             max_tlas_instance_count: 0,
@@ -780,6 +801,12 @@ impl Limits {
     ///     max_compute_workgroups_per_dimension: 65535,
     ///     max_buffer_size: 256 << 20, // (256 MiB)
     ///     max_non_sampler_bindings: 1_000_000,
+    ///
+    ///     max_task_workgroup_total_count: 0,
+    ///     max_task_workgroups_per_dimension: 0,
+    ///     max_mesh_multiview_count: 0,
+    ///     max_mesh_output_layers: 0,
+    ///
     ///     max_blas_primitive_count: 0,
     ///     max_blas_geometry_count: 0,
     ///     max_tlas_instance_count: 0,
@@ -797,6 +824,11 @@ impl Limits {
             max_color_attachments: 4,
             // see: https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf#page=7
             max_compute_workgroup_storage_size: 16352,
+
+            max_task_workgroups_per_dimension: 0,
+            max_task_workgroup_total_count: 0,
+            max_mesh_multiview_count: 0,
+            max_mesh_output_layers: 0,
             ..Self::defaults()
         }
     }
@@ -844,6 +876,12 @@ impl Limits {
     ///     max_compute_workgroups_per_dimension: 0, // +
     ///     max_buffer_size: 256 << 20, // (256 MiB),
     ///     max_non_sampler_bindings: 1_000_000,
+    ///
+    ///     max_task_workgroup_total_count: 0,
+    ///     max_task_workgroups_per_dimension: 0,
+    ///     max_mesh_multiview_count: 0,
+    ///     max_mesh_output_layers: 0,
+    ///
     ///     max_blas_primitive_count: 0,
     ///     max_blas_geometry_count: 0,
     ///     max_tlas_instance_count: 0,
@@ -929,6 +967,24 @@ impl Limits {
         }
     }
 
+    /// The recommended minimum limits for mesh shaders if you enable [`Features::EXPERIMENTAL_MESH_SHADER`]
+    ///
+    /// These are chosen somewhat arbitrarily. They are small enough that they should cover all physical devices,
+    /// but not necessarily all use cases.
+    #[must_use]
+    pub const fn using_recommended_minimum_mesh_shader_values(self) -> Self {
+        Self {
+            // Literally just made this up as 256^2 or 2^16.
+            // My GPU supports 2^22, and compute shaders don't have this kind of limit.
+            // This very likely is never a real limiter
+            max_task_workgroup_total_count: 65536,
+            max_task_workgroups_per_dimension: 256,
+            max_mesh_multiview_count: 1,
+            max_mesh_output_layers: 1024,
+            ..self
+        }
+    }
+
     /// Compares every limits within self is within the limits given in `allowed`.
     ///
     /// If you need detailed information on failures, look at [`Limits::check_limits_with_fail_fn`].
@@ -1008,6 +1064,12 @@ impl Limits {
         }
         compare!(max_push_constant_size, Less);
         compare!(max_non_sampler_bindings, Less);
+
+        compare!(max_task_workgroup_total_count, Less);
+        compare!(max_task_workgroups_per_dimension, Less);
+        compare!(max_mesh_multiview_count, Less);
+        compare!(max_mesh_output_layers, Less);
+
         compare!(max_blas_primitive_count, Less);
         compare!(max_blas_geometry_count, Less);
         compare!(max_tlas_instance_count, Less);
@@ -1402,9 +1464,9 @@ bitflags::bitflags! {
         const COMPUTE = 1 << 2;
         /// Binding is visible from the vertex and fragment shaders of a render pipeline.
         const VERTEX_FRAGMENT = Self::VERTEX.bits() | Self::FRAGMENT.bits();
-        /// Binding is visible from the task shader of a mesh pipeline
+        /// Binding is visible from the task shader of a mesh pipeline.
         const TASK = 1 << 3;
-        /// Binding is visible from the mesh shader of a mesh pipeline
+        /// Binding is visible from the mesh shader of a mesh pipeline.
         const MESH = 1 << 4;
     }
 }

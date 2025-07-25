@@ -1442,6 +1442,15 @@ pub enum DrawKind {
     MultiDrawIndirectCount,
 }
 
+/// The type of draw command(indexed or not, or mesh shader)
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DrawCommandFamily {
+    Draw,
+    DrawIndexed,
+    DrawMeshTasks,
+}
+
 /// A command that can be recorded in a pass or bundle.
 ///
 /// This is used to provide context for errors during command recording.
@@ -1480,7 +1489,10 @@ pub enum PassErrorScope {
     #[error("In a set_scissor_rect command")]
     SetScissorRect,
     #[error("In a draw command, kind: {kind:?}")]
-    Draw { kind: DrawKind, indexed: bool },
+    Draw {
+        kind: DrawKind,
+        family: DrawCommandFamily,
+    },
     #[error("In a write_timestamp command")]
     WriteTimestamp,
     #[error("In a begin_occlusion_query command")]

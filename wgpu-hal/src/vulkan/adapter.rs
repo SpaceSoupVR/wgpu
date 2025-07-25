@@ -932,7 +932,7 @@ pub struct PhysicalDeviceProperties {
 
     /// Additional `vk::PhysicalDevice` properties from the
     /// `VK_EXT_mesh_shader` extension.
-    _mesh_shader: Option<vk::PhysicalDeviceMeshShaderPropertiesEXT<'static>>,
+    mesh_shader: Option<vk::PhysicalDeviceMeshShaderPropertiesEXT<'static>>,
 
     /// The device API version.
     ///
@@ -1160,6 +1160,20 @@ impl PhysicalDeviceProperties {
         let max_compute_workgroups_per_dimension = limits.max_compute_work_group_count[0]
             .min(limits.max_compute_work_group_count[1])
             .min(limits.max_compute_work_group_count[2]);
+        let (
+            max_task_workgroup_total_count,
+            max_task_workgroups_per_dimension,
+            max_mesh_multiview_count,
+            max_mesh_output_layers,
+        ) = match self.mesh_shader {
+            Some(m) => (
+                m.max_task_work_group_total_count,
+                m.max_task_work_group_count.into_iter().min().unwrap(),
+                m.max_mesh_multiview_view_count,
+                m.max_mesh_output_layers,
+            ),
+            None => (0, 0, 0, 0),
+        };
 
         // Prevent very large buffers on mesa and most android devices.
         let is_nvidia = self.properties.vendor_id == crate::auxil::db::nvidia::VENDOR;
@@ -1267,6 +1281,12 @@ impl PhysicalDeviceProperties {
             max_compute_workgroups_per_dimension,
             max_buffer_size,
             max_non_sampler_bindings: u32::MAX,
+
+            max_task_workgroup_total_count,
+            max_task_workgroups_per_dimension,
+            max_mesh_multiview_count,
+            max_mesh_output_layers,
+
             max_blas_primitive_count,
             max_blas_geometry_count,
             max_tlas_instance_count,
@@ -1401,7 +1421,7 @@ impl super::InstanceShared {
 
                 if supports_mesh_shader {
                     let next = capabilities
-                        ._mesh_shader
+                        .mesh_shader
                         .insert(vk::PhysicalDeviceMeshShaderPropertiesEXT::default());
                     properties2 = properties2.push_next(next);
                 }
