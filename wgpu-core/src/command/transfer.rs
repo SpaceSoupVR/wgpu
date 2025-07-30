@@ -1,4 +1,4 @@
-use alloc::{format, string::String, sync::Arc, vec, vec::Vec};
+use alloc::{format, string::String, sync::Arc, vec::Vec};
 
 use arrayvec::ArrayVec;
 use thiserror::Error;
@@ -399,7 +399,7 @@ pub(crate) fn validate_texture_buffer_copy<T>(
         return Err(TransferError::CopyAspectNotOne);
     }
 
-    let mut offset_alignment = if desc.format.is_depth_stencil_format() {
+    let offset_alignment = if desc.format.is_depth_stencil_format() {
         4
     } else {
         // The case where `block_copy_size` returns `None` is currently
@@ -411,17 +411,7 @@ pub(crate) fn validate_texture_buffer_copy<T>(
             .expect("non-copyable formats should have been rejected previously")
     };
 
-    // TODO(https://github.com/gfx-rs/wgpu/issues/7947): This does not match the spec.
-    // The spec imposes no alignment requirement if `!aligned`, and otherwise
-    // imposes only the `offset_alignment` as calculated above. wgpu currently
-    // can panic on alignments <4B, so we reject them here to avoid a panic.
-    if aligned {
-        offset_alignment = offset_alignment.max(4);
-    } else {
-        offset_alignment = 4;
-    }
-
-    if offset % u64::from(offset_alignment) != 0 {
+    if aligned && offset % u64::from(offset_alignment) != 0 {
         return Err(TransferError::UnalignedBufferOffset(offset));
     }
 
@@ -1347,45 +1337,32 @@ impl Global {
                 height: src_copy_size.height.min(dst_copy_size.height),
                 depth: src_copy_size.depth.min(dst_copy_size.depth),
             };
+
+            let regions = (0..array_layer_count).map(|rel_array_layer| {
+                let mut src_base = src_tex_base.clone();
+                let mut dst_base = dst_tex_base.clone();
+                src_base.array_layer += rel_array_layer;
+                dst_base.array_layer += rel_array_layer;
+                hal::TextureCopy {
+                    src_base,
+                    dst_base,
+                    size: hal_copy_size,
+                }
+            });
+
             let regions = if dst_tex_base.aspect == hal::FormatAspects::DEPTH_STENCIL {
-                vec![
-                    hal::TextureCopy {
-                        src_base: hal::TextureCopyBase {
-                            aspect: hal::FormatAspects::DEPTH,
-                            ..src_tex_base
-                        },
-                        dst_base: hal::TextureCopyBase {
-                            aspect: hal::FormatAspects::DEPTH,
-                            ..dst_tex_base
-                        },
-                        size: hal_copy_size,
-                    },
-                    hal::TextureCopy {
-                        src_base: hal::TextureCopyBase {
-                            aspect: hal::FormatAspects::STENCIL,
-                            ..src_tex_base
-                        },
-                        dst_base: hal::TextureCopyBase {
-                            aspect: hal::FormatAspects::STENCIL,
-                            ..dst_tex_base
-                        },
-                        size: hal_copy_size,
-                    },
-                ]
-            } else {
-                (0..array_layer_count)
-                    .map(|rel_array_layer| {
-                        let mut src_base = src_tex_base.clone();
-                        let mut dst_base = dst_tex_base.clone();
-                        src_base.array_layer += rel_array_layer;
-                        dst_base.array_layer += rel_array_layer;
-                        hal::TextureCopy {
-                            src_base,
-                            dst_base,
-                            size: hal_copy_size,
-                        }
+                regions
+                    .flat_map(|region| {
+                        let (mut depth, mut stencil) = (region.clone(), region);
+                        depth.src_base.aspect = hal::FormatAspects::DEPTH;
+                        depth.dst_base.aspect = hal::FormatAspects::DEPTH;
+                        stencil.src_base.aspect = hal::FormatAspects::STENCIL;
+                        stencil.dst_base.aspect = hal::FormatAspects::STENCIL;
+                        [depth, stencil]
                     })
-                    .collect()
+                    .collect::<Vec<_>>()
+            } else {
+                regions.collect::<Vec<_>>()
             };
             let cmd_buf_raw = cmd_buf_data.encoder.open()?;
             unsafe {
