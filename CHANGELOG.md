@@ -40,6 +40,12 @@ Bottom level categories:
 
 ## Unreleased
 
+## v26.0.3 (2025-07-30)
+
+### Bug Fixes
+
+- Fixed memory leak in vulkan backend. By @cwfitzgerald in [#8031](https://github.com/gfx-rs/wgpu/pull/8031).
+
 ## v26.0.2 (2025-07-26)
 
 ### Bug Fixes
