@@ -2542,6 +2542,19 @@ impl Device {
         buffer.check_usage(pub_usage)?;
 
         let (bb, bind_size) = buffer.binding(bb.offset, bb.size, snatch_guard)?;
+
+        if matches!(binding_ty, wgt::BufferBindingType::Storage { .. }) {
+            let storage_buf_size_alignment = 4;
+
+            let aligned = bind_size % u64::from(storage_buf_size_alignment) == 0;
+            if !aligned {
+                return Err(Error::UnalignedEffectiveBufferBindingSizeForStorage {
+                    alignment: storage_buf_size_alignment,
+                    size: bind_size,
+                });
+            }
+        }
+
         let bind_end = bb.offset + bind_size;
 
         if bind_size > range_limit as u64 {
