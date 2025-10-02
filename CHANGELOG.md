@@ -156,8 +156,7 @@ By @cwfitzgerald in [#8163](https://github.com/gfx-rs/wgpu/pull/8163).
 We have removed `Features::MULTI_DRAW_INDIRECT` as it was unconditionally available on all platforms. 
 `RenderPass::multi_draw_indirect` is now available if the device supports downlevel flag `DownlevelFlags::INDIRECT_EXECUTION`.
 
-If you are using spirv-passthrough with multi-draw indirect and `gl_DrawID`, you can know if `MULTI_DRAW_INDIRECT` is being emulated
-by if the `Feature::MULTI_DRAW_INDIRECT_COUNT` feature is available on the device, this feature cannot be emulated efficicently.
+The `Feature::MULTI_DRAW_INDIRECT_COUNT` feature can be used to determine if multi-draw is supported natively on the device. This is helpful to know if you are using spirv-passthrough and `gl_DrawID` in your shaders.
 
 By @cwfitzgerald in [#8162](https://github.com/gfx-rs/wgpu/pull/8162).
 
