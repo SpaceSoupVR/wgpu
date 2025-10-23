@@ -40,6 +40,16 @@ Bottom level categories:
 
 ## Unreleased
 
+## v26.0.6 (2025-10-23)
+
+This release includes `wgpu-hal` version `26.0.6`. All other crates remain at their previous versions.
+
+### Bug Fixes
+
+#### Vulkan
+
+- Work around extremely poor frame pacing from AMD and Nvidia cards on Windows in `Fifo` and `FifoRelaxed` present modes. This is due to the drivers implicitly using a DXGI (Direct3D) swapchain to implement these modes and it having vastly different timing properties. See https://github.com/gfx-rs/wgpu/issues/8310 and https://github.com/gfx-rs/wgpu/issues/8354 for more information. By @cwfitzgerald in [#8420](https://github.com/gfx-rs/wgpu/pull/8420).
+
 ## v26.0.5 (2025-10-21)
 
 This release includes `wgpu-hal` version `26.0.5`. All other crates remain at their previous versions.
