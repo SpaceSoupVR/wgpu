@@ -1964,15 +1964,13 @@ impl Writer {
                 if let Some(cap) = cap {
                     self.capabilities_used.insert(cap);
                 }
-                if bits == 16 {
+                // 16-bit STORAGE capabilities are declared where a 16-bit type
+                // is actually stored in a buffer -- see `write_global_variable`
+                // -- not for every 16-bit type. (SpaceSoupVR fork: Adreno has
+                // 16-bit arithmetic but no 16-bit uniform access.)
+                if bits == 16 && self.use_storage_input_output_16 {
                     self.capabilities_used
-                        .insert(spirv::Capability::StorageBuffer16BitAccess);
-                    self.capabilities_used
-                        .insert(spirv::Capability::UniformAndStorageBuffer16BitAccess);
-                    if self.use_storage_input_output_16 {
-                        self.capabilities_used
-                            .insert(spirv::Capability::StorageInputOutput16);
-                    }
+                        .insert(spirv::Capability::StorageInputOutput16);
                 }
                 Instruction::type_int(id, bits, signedness)
             }
@@ -1981,11 +1979,10 @@ impl Writer {
                     self.capabilities_used.insert(spirv::Capability::Float64);
                 }
                 if bits == 16 {
+                    // Arithmetic on `f16` needs `Float16` alone. The storage
+                    // capabilities follow the buffers that hold one -- see
+                    // `write_global_variable`. (SpaceSoupVR fork.)
                     self.capabilities_used.insert(spirv::Capability::Float16);
-                    self.capabilities_used
-                        .insert(spirv::Capability::StorageBuffer16BitAccess);
-                    self.capabilities_used
-                        .insert(spirv::Capability::UniformAndStorageBuffer16BitAccess);
                     if self.use_storage_input_output_16 {
                         self.capabilities_used
                             .insert(spirv::Capability::StorageInputOutput16);
@@ -3412,6 +3409,32 @@ impl Writer {
         let id = self.id_gen.next();
         let class = map_storage_class(global_variable.space);
 
+        // A 16-BIT TYPE HELD IN A BUFFER needs the storage capability for that
+        // kind of buffer; 16-bit arithmetic alone needs only `Float16` /
+        // `Int16` (see `make_scalar`). Declaring the buffer capabilities for
+        // every 16-bit type made any shader using `f16` at all require
+        // `uniformAndStorageBuffer16BitAccess`, which no Qualcomm GPU has
+        // (gpuweb#5006) though they all do `f16` arithmetic. (SpaceSoupVR fork.)
+        if contains_16_bit_scalar(ir_module, global_variable.ty) {
+            match global_variable.space {
+                crate::AddressSpace::Uniform => {
+                    self.capabilities_used
+                        .insert(spirv::Capability::StorageBuffer16BitAccess);
+                    self.capabilities_used
+                        .insert(spirv::Capability::UniformAndStorageBuffer16BitAccess);
+                }
+                crate::AddressSpace::Storage { .. } => {
+                    self.capabilities_used
+                        .insert(spirv::Capability::StorageBuffer16BitAccess);
+                }
+                crate::AddressSpace::Immediate => {
+                    self.capabilities_used
+                        .insert(spirv::Capability::StoragePushConstant16);
+                }
+                _ => {}
+            }
+        }
+
         if let crate::AddressSpace::RayPayload | crate::AddressSpace::IncomingRayPayload =
             global_variable.space
         {
@@ -3976,4 +3999,22 @@ fn test_write_physical_layout() {
     assert_eq!(writer.physical_layout.bound, 0);
     writer.write_physical_layout();
     assert_eq!(writer.physical_layout.bound, 3);
+}
+
+/// Whether `ty` holds a 16-bit scalar anywhere: itself, a vector, matrix or
+/// atomic of one, or an array or struct containing one. (SpaceSoupVR fork.)
+fn contains_16_bit_scalar(module: &crate::Module, ty: Handle<crate::Type>) -> bool {
+    match module.types[ty].inner {
+        crate::TypeInner::Scalar(scalar) | crate::TypeInner::Atomic(scalar) => scalar.width == 2,
+        crate::TypeInner::Vector { scalar, .. }
+        | crate::TypeInner::Matrix { scalar, .. }
+        | crate::TypeInner::CooperativeMatrix { scalar, .. } => scalar.width == 2,
+        crate::TypeInner::Array { base, .. } | crate::TypeInner::BindingArray { base, .. } => {
+            contains_16_bit_scalar(module, base)
+        }
+        crate::TypeInner::Struct { ref members, .. } => members
+            .iter()
+            .any(|member| contains_16_bit_scalar(module, member.ty)),
+        _ => false,
+    }
 }

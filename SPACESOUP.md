@@ -24,9 +24,20 @@ can't be reached through stock wgpu:
 
 - [ ] `wgpu-hal`/`wgpu-core`: an optional fragment-density-map attachment on
       render passes (Vulkan backend), and subsampled image creation.
-- [ ] `wgpu-hal`/`naga`: f16 arithmetic behind a feature that requires only
-      `shaderFloat16` (+ 16-bit storage-buffer access where used), keeping
-      uniforms 32-bit.
+- [x] `naga` (2026-09-28): the SPIR-V writer declares the 16-bit STORAGE
+      capabilities (`StorageBuffer16BitAccess`,
+      `UniformAndStorageBuffer16BitAccess`, `StoragePushConstant16`) only
+      for a uniform, storage or push-constant variable that holds a 16-bit
+      type, instead of for every 16-bit type. `f16` arithmetic then needs
+      only `Float16`, i.e. `shaderFloat16`. Tests:
+      `naga/tests/naga/spirv_capabilities.rs`
+      (`float16_arithmetic_needs_no_storage_capability`, which fails without
+      the patch, and `float16_in_buffers_declares_their_storage_capability`).
+      Upstreamable as a bug fix: the old behaviour required capabilities
+      the module never used.
+- [ ] `wgpu-hal`: expose `SHADER_F16` from `shaderFloat16` alone. Not needed
+      for SpaceSoup's renderer: it builds its own `VkDevice`, enables
+      `shaderFloat16` itself and claims the feature through `device_from_raw`.
 - [ ] Investigate: naga SPIR-V `RelaxedPrecision` decorations as an alternative
       route to mediump.
 - [ ] Investigate: combined image-samplers on the Vulkan backend (Qualcomm
