@@ -38,6 +38,13 @@ can't be reached through stock wgpu:
 - [ ] `wgpu-hal`: expose `SHADER_F16` from `shaderFloat16` alone. Not needed
       for SpaceSoup's renderer: it builds its own `VkDevice`, enables
       `shaderFloat16` itself and claims the feature through `device_from_raw`.
+- [x] `wgpu-hal` (2026-09-28): `device_from_raw` trusts robust buffer/image
+      access only when its extension (`VK_EXT_robustness2`,
+      `VK_EXT_image_robustness`) is in `enabled_extensions`. It used the
+      adapter's caps, which describe SUPPORT: a device the caller built without
+      robust access got shaders compiled WITHOUT naga's buffer and image-load
+      bounds checks, so an out-of-range read was undefined. (On Quest 3,
+      turning robust access on instead cost 0.2-1.7 ms of GPU a frame.)
 - [ ] Investigate: naga SPIR-V `RelaxedPrecision` decorations as an alternative
       route to mediump.
 - [ ] Investigate: combined image-samplers on the Vulkan backend (Qualcomm
