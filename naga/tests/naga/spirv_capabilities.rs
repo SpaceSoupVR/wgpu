@@ -228,6 +228,56 @@ fn float16() {
     require(&[Ca::Float16], "enable f16; fn f(x: f16) { }");
 }
 
+/// `f16` ARITHMETIC needs only `Float16`. The 16-bit STORAGE capabilities
+/// belong to buffers that hold one: declaring them for every `f16` made any
+/// shader using it at all require `uniformAndStorageBuffer16BitAccess`, which
+/// no Qualcomm GPU has though they all do `f16` arithmetic (gpuweb#5006).
+/// (SpaceSoupVR fork.)
+#[test]
+fn float16_arithmetic_needs_no_storage_capability() {
+    require_and_forbid(
+        &[Ca::Float16],
+        &[
+            Ca::StorageBuffer16BitAccess,
+            Ca::UniformAndStorageBuffer16BitAccess,
+            Ca::StoragePushConstant16,
+        ],
+        "
+        enable f16;
+        @group(0) @binding(0) var<uniform> u: vec4<f32>;
+        var<private> p: vec3<f16>;
+        fn f(x: f32) -> f32 {
+            let h = vec3<f16>(u.xyz) * f16(x);
+            p = h;
+            return f32(dot(h, h));
+        }
+        ",
+    );
+}
+
+/// ...and a buffer that does hold an `f16` declares its kind's capability.
+#[test]
+fn float16_in_buffers_declares_their_storage_capability() {
+    require(
+        &[Ca::Float16, Ca::StorageBuffer16BitAccess, Ca::UniformAndStorageBuffer16BitAccess],
+        "
+        enable f16;
+        struct S { a: f32, h: vec2<f16> }
+        @group(0) @binding(0) var<uniform> u: S;
+        fn f() -> f16 { return u.h.x; }
+        ",
+    );
+    require_and_forbid(
+        &[Ca::Float16, Ca::StorageBuffer16BitAccess],
+        &[Ca::UniformAndStorageBuffer16BitAccess],
+        "
+        enable f16;
+        @group(0) @binding(0) var<storage, read> b: array<f16>;
+        fn f() -> f16 { return b[0]; }
+        ",
+    );
+}
+
 #[test]
 fn f16_io_capabilities() {
     let source = r#"
