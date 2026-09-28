@@ -2578,6 +2578,25 @@ impl super::Adapter {
         family_index: u32,
         queue_index: u32,
     ) -> Result<crate::OpenDevice<super::Api>, crate::DeviceError> {
+        // ROBUST ACCESS ONLY WHERE IT WAS ENABLED. (SpaceSoupVR fork.) The
+        // adapter's caps say what the physical device SUPPORTS: a device this
+        // adapter creates itself enables all of it (see `create_device`), but a
+        // device handed in raw was built by the caller, who says what it enabled
+        // in `enabled_extensions`. Trusting support compiled every shader
+        // without its own buffer and image-load bounds checks -- on a device
+        // with no robust access switched on, where an out-of-range read is
+        // undefined. Without the extensions listed, the checks stay in the
+        // shaders. (Core image robustness in Vulkan 1.3 also needs its feature
+        // enabled, which this cannot see, so it too counts only when an
+        // extension providing it is listed.)
+        let mut private_caps = self.private_caps.clone();
+        if !enabled_extensions.contains(&ext::robustness2::NAME) {
+            private_caps.robust_buffer_access2 = false;
+            private_caps.robust_image_access2 = false;
+            if !enabled_extensions.contains(&ext::image_robustness::NAME) {
+                private_caps.robust_image_access = false;
+            }
+        }
         let mem_properties = {
             profiling::scope!("vkGetPhysicalDeviceMemoryProperties");
             unsafe {
@@ -2810,7 +2829,7 @@ impl super::Adapter {
                 // TODO: expose this more generally
                 capabilities.push(spv::Capability::VulkanMemoryModel);
             }
-            if self.private_caps.shader_integer_dot_product {
+            if private_caps.shader_integer_dot_product {
                 // See <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VK_KHR_shader_integer_dot_product.html#_new_spir_v_capabilities>.
                 capabilities.extend(&[
                     spv::Capability::DotProductInputAllKHR,
@@ -2819,7 +2838,7 @@ impl super::Adapter {
                     spv::Capability::DotProductKHR,
                 ]);
             }
-            if self.private_caps.shader_int8 {
+            if private_caps.shader_int8 {
                 // See <https://registry.khronos.org/vulkan/specs/latest/man/html/VkPhysicalDeviceShaderFloat16Int8Features.html#extension-features-shaderInt8>.
                 capabilities.extend(&[spv::Capability::Int8]);
             }
@@ -2837,12 +2856,12 @@ impl super::Adapter {
                 capabilities: Some(capabilities.iter().cloned().collect()),
                 bounds_check_policies: naga::proc::BoundsCheckPolicies {
                     index: naga::proc::BoundsCheckPolicy::Restrict,
-                    buffer: if self.private_caps.robust_buffer_access2 {
+                    buffer: if private_caps.robust_buffer_access2 {
                         naga::proc::BoundsCheckPolicy::Unchecked
                     } else {
                         naga::proc::BoundsCheckPolicy::Restrict
                     },
-                    image_load: if self.private_caps.robust_image_access {
+                    image_load: if private_caps.robust_image_access {
                         naga::proc::BoundsCheckPolicy::Unchecked
                     } else {
                         naga::proc::BoundsCheckPolicy::Restrict
@@ -2923,12 +2942,12 @@ impl super::Adapter {
             pipeline_cache_validation_key,
             vendor_id: self.phd_capabilities.properties.vendor_id,
             timestamp_period: self.phd_capabilities.properties.limits.timestamp_period,
-            private_caps: self.private_caps.clone(),
+            private_caps: private_caps.clone(),
             features,
             workarounds: self.workarounds,
             render_passes: Mutex::new(Default::default()),
             sampler_cache: Mutex::new(super::sampler::SamplerCache::new(
-                self.private_caps.maximum_samplers,
+                private_caps.maximum_samplers,
             )),
             memory_allocations_counter: Default::default(),
 
