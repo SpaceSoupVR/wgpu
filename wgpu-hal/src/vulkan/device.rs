@@ -16,6 +16,51 @@ use super::{conv, descriptor::DescriptorCounts, RawTlasInstance};
 use crate::TlasInstance;
 
 impl super::DeviceShared {
+    /// SPACESOUP: whether pipelines are created with their statistics
+    /// captured: the device enabled VK_KHR_pipeline_executable_properties.
+    fn captures_pipeline_statistics(&self) -> bool {
+        self.enabled_extensions
+            .contains(&ash::khr::pipeline_executable_properties::NAME)
+    }
+
+    /// SPACESOUP: logs the driver's statistics for each executable (shader
+    /// stage) of `pipeline` -- one `PIPESTATS` line each, at warn level so a
+    /// release app's log shows it. How many registers a shader holds decides
+    /// how many waves of it a GPU core keeps in flight, and on a Quest nothing
+    /// else reports it. (The Adreno driver offers no internal representations
+    /// -- no listing -- only these numbers.)
+    unsafe fn log_pipeline_statistics(&self, pipeline: vk::Pipeline, label: Option<&str>) {
+        let ext = ash::khr::pipeline_executable_properties::Device::new(&self.instance.raw, &self.raw);
+        let info = vk::PipelineInfoKHR::default().pipeline(pipeline);
+        let Ok(executables) = (unsafe { ext.get_pipeline_executable_properties(&info) }) else {
+            return;
+        };
+        for (index, exe) in executables.iter().enumerate() {
+            let exe_info = vk::PipelineExecutableInfoKHR::default()
+                .pipeline(pipeline)
+                .executable_index(index as u32);
+            let Ok(stats) = (unsafe { ext.get_pipeline_executable_statistics(&exe_info) }) else {
+                continue;
+            };
+            let mut line = alloc::string::String::new();
+            for stat in &stats {
+                let name = unsafe { CStr::from_ptr(stat.name.as_ptr()) }.to_string_lossy();
+                let value = unsafe {
+                    match stat.format {
+                        vk::PipelineExecutableStatisticFormatKHR::BOOL32 => alloc::format!("{}", stat.value.b32),
+                        vk::PipelineExecutableStatisticFormatKHR::INT64 => alloc::format!("{}", stat.value.i64),
+                        vk::PipelineExecutableStatisticFormatKHR::UINT64 => alloc::format!("{}", stat.value.u64),
+                        vk::PipelineExecutableStatisticFormatKHR::FLOAT64 => alloc::format!("{:.3}", stat.value.f64),
+                        _ => "?".into(),
+                    }
+                };
+                line.push_str(&alloc::format!(" [{}]={}", name, value));
+            }
+            let exe_name = unsafe { CStr::from_ptr(exe.name.as_ptr()) }.to_string_lossy();
+            log::warn!("PIPESTATS {} <{}> subgroup {}{}", label.unwrap_or("?"), exe_name, exe.subgroup_size, line);
+        }
+    }
+
     /// Set the name of `object` to `name`.
     ///
     /// If `name` contains an interior null byte, then the name set will be truncated to that byte.
@@ -2146,8 +2191,13 @@ impl crate::Device for super::Device {
 
         let raw_pass = self.shared.make_render_pass(compatible_rp_key)?;
 
+        // SPACESOUP: the driver's own statistics for this pipeline -- registers,
+        // instruction counts -- where the device enabled
+        // VK_KHR_pipeline_executable_properties, which only a device created
+        // outside wgpu (`device_from_raw`) can have done. See `log_pipeline_statistics`.
+        let capture_statistics = self.shared.captures_pipeline_statistics();
         let vk_infos = [{
-            vk::GraphicsPipelineCreateInfo::default()
+            let info = vk::GraphicsPipelineCreateInfo::default()
                 .layout(desc.layout.raw)
                 .stages(&stages)
                 .vertex_input_state(&vk_vertex_input)
@@ -2158,7 +2208,12 @@ impl crate::Device for super::Device {
                 .depth_stencil_state(&vk_depth_stencil)
                 .color_blend_state(&vk_color_blend)
                 .dynamic_state(&vk_dynamic_state)
-                .render_pass(raw_pass)
+                .render_pass(raw_pass);
+            if capture_statistics {
+                info.flags(vk::PipelineCreateFlags::CAPTURE_STATISTICS_KHR)
+            } else {
+                info
+            }
         }];
 
         let pipeline_cache = desc
@@ -2179,6 +2234,9 @@ impl crate::Device for super::Device {
         let raw = raw_vec.pop().unwrap();
         if let Some(label) = desc.label {
             unsafe { self.shared.set_object_name(raw, label) };
+        }
+        if capture_statistics {
+            unsafe { self.shared.log_pipeline_statistics(raw, desc.label) };
         }
 
         if let Some(CompiledStage {

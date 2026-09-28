@@ -45,6 +45,16 @@ can't be reached through stock wgpu:
       robust access got shaders compiled WITHOUT naga's buffer and image-load
       bounds checks, so an out-of-range read was undefined. (On Quest 3,
       turning robust access on instead cost 0.2-1.7 ms of GPU a frame.)
+- [x] `wgpu-hal` (2026-09-28): PIPELINE STATISTICS. Where the device was
+      created with `VK_KHR_pipeline_executable_properties` (in
+      `enabled_extensions`; wgpu never enables it itself), every render
+      pipeline is created with `CAPTURE_STATISTICS_KHR` and logs the driver's
+      statistics per shader stage as one `PIPESTATS <label> <stage>` line at
+      warn level: register footprint, occupancy, instruction counts. On the
+      Quest this is the only source of a shader's register count, which sets
+      how many waves stay in flight. (The Adreno driver offers no internal
+      representations, only statistics.) SpaceSoup enables it with
+      `adb shell setprop debug.spacesoup.pipestats 1`. No effect otherwise.
 - [ ] Investigate: naga SPIR-V `RelaxedPrecision` decorations as an alternative
       route to mediump.
 - [ ] Investigate: combined image-samplers on the Vulkan backend (Qualcomm
