@@ -30,6 +30,7 @@ pub mod conv;
 mod descriptor;
 mod device;
 mod drm;
+mod foveation;
 mod instance;
 mod sampler;
 mod semaphore_list;
@@ -50,6 +51,8 @@ use naga::FastHashMap;
 use wgt::InternalCounter;
 
 use semaphore_list::SemaphoreList;
+
+pub use foveation::DensityPattern;
 
 use crate::vulkan::semaphore_list::{SemaphoreListMode, SemaphoreType};
 
@@ -500,6 +503,9 @@ struct RenderPassKey {
     depth_stencil: Option<DepthStencilAttachmentKey>,
     sample_count: u32,
     multiview_mask: Option<NonZeroU32>,
+    /// The pass carries a fragment density map, as its last attachment. Every
+    /// pass does once foveation is enabled -- see `foveation`.
+    fragment_density_map: bool,
 }
 
 struct DeviceShared {
@@ -528,6 +534,9 @@ struct DeviceShared {
     texture_identity_factory: ResourceIdentityFactory<vk::Image>,
     /// As above, for texture views.
     texture_view_identity_factory: ResourceIdentityFactory<vk::ImageView>,
+    /// Fixed foveated rendering, once enabled (SpaceSoupVR fork). See
+    /// `foveation`.
+    foveation: RwLock<Option<foveation::Foveation>>,
 
     empty_descriptor_set_layout: vk::DescriptorSetLayout,
 
@@ -540,6 +549,9 @@ impl Drop for DeviceShared {
     fn drop(&mut self) {
         for &raw in self.render_passes.lock().values() {
             unsafe { self.raw.destroy_render_pass(raw, None) };
+        }
+        if let Some(fov) = self.foveation.get_mut().take() {
+            unsafe { fov.destroy(&self.raw) };
         }
         unsafe {
             self.raw

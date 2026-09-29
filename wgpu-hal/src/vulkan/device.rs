@@ -130,6 +130,7 @@ impl super::DeviceShared {
                     ref depth_stencil,
                     sample_count,
                     multiview_mask,
+                    fragment_density_map,
                 } = *e.key();
 
                 let mut vk_attachments = Vec::new();
@@ -228,6 +229,27 @@ impl super::DeviceShared {
                     vk_attachments.push(vk_attachment);
                 }
 
+                // The density map last, after every attachment a subpass uses.
+                // Loaded rather than discarded, as Khronos' sample has it; it
+                // is read by the density stage, never stored.
+                let fdm_ref = fragment_density_map.then(|| {
+                    vk_attachments.push(
+                        vk::AttachmentDescription::default()
+                            .format(vk::Format::R8G8_UNORM)
+                            .samples(vk::SampleCountFlags::TYPE_1)
+                            .load_op(vk::AttachmentLoadOp::LOAD)
+                            .store_op(vk::AttachmentStoreOp::DONT_CARE)
+                            .stencil_load_op(vk::AttachmentLoadOp::DONT_CARE)
+                            .stencil_store_op(vk::AttachmentStoreOp::DONT_CARE)
+                            .initial_layout(vk::ImageLayout::FRAGMENT_DENSITY_MAP_OPTIMAL_EXT)
+                            .final_layout(vk::ImageLayout::FRAGMENT_DENSITY_MAP_OPTIMAL_EXT),
+                    );
+                    vk::AttachmentReference {
+                        attachment: vk_attachments.len() as u32 - 1,
+                        layout: vk::ImageLayout::FRAGMENT_DENSITY_MAP_OPTIMAL_EXT,
+                    }
+                });
+
                 let vk_subpasses = [{
                     let mut vk_subpass = vk::SubpassDescription::default()
                         .pipeline_bind_point(vk::PipelineBindPoint::GRAPHICS)
@@ -262,6 +284,13 @@ impl super::DeviceShared {
                         .view_masks(&mask)
                         .correlation_masks(&mask);
                     vk_info = vk_info.push_next(&mut multiview_info);
+                }
+
+                let mut fdm_info;
+                if let Some(reference) = fdm_ref {
+                    fdm_info = vk::RenderPassFragmentDensityMapCreateInfoEXT::default()
+                        .fragment_density_map_attachment(reference);
+                    vk_info = vk_info.push_next(&mut fdm_info);
                 }
 
                 let raw = unsafe {
@@ -1986,6 +2015,9 @@ impl crate::Device for super::Device {
         let mut compatible_rp_key = super::RenderPassKey {
             sample_count: desc.multisample.count,
             multiview_mask: desc.multiview_mask,
+            // Every pass carries a density map once foveation is on, so every
+            // pipeline is made compatible with one. See `foveation`.
+            fragment_density_map: self.shared.foveation.read().is_some(),
             ..Default::default()
         };
         let mut stages = ArrayVec::<_, { crate::MAX_CONCURRENT_SHADER_STAGES }>::new();
