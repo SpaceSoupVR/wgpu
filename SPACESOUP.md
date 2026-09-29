@@ -11,10 +11,8 @@ Our renderer targets Meta Quest 3 (Adreno 740, Vulkan). Two features it needs
 can't be reached through stock wgpu:
 
 1. **Fixed foveated rendering.** Quest FFR attaches a Vulkan fragment density
-   map (`VK_EXT_fragment_density_map` / `_map2`, supplied by the runtime via
-   `XR_FB_foveation_vulkan`) to the render pass. It optionally renders into
-   subsampled images (`VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT`). wgpu has no way to
-   attach a density map to a render pass.
+   map (`VK_EXT_fragment_density_map`) to the render pass. wgpu has no way to
+   attach a density map to a render pass. (Done: see below.)
 2. **Half-precision shading on Adreno.** `Features::SHADER_F16` requires
    `uniformAndStorageBuffer16BitAccess`, which no Qualcomm GPU exposes
    (gpuweb#5006), even though `shaderFloat16` is available. We want f16
@@ -22,8 +20,21 @@ can't be reached through stock wgpu:
 
 ## Planned patches (each small, isolated, upstreamable where possible)
 
-- [ ] `wgpu-hal`/`wgpu-core`: an optional fragment-density-map attachment on
-      render passes (Vulkan backend), and subsampled image creation.
+- [x] `wgpu-hal` (2026-09-29): FIXED FOVEATED RENDERING
+      (`vulkan/foveation.rs`), without touching wgpu or wgpu-core. After
+      `Device::enable_foveation` EVERY render pass carries a fragment density
+      map as its last attachment and every pipeline is created against a
+      compatible render pass that has one: a full-density map by default, and
+      the map registered for a pass's colour or resolve target view
+      (`add_foveation_maps`, `set_foveation_target`) where there is one. So
+      no pipeline needs a second variant. Maps are `R8G8_UNORM`, written once
+      and left in `FRAGMENT_DENSITY_MAP_OPTIMAL_EXT` (not dynamic).
+      Attachments stay ordinary images: the caller must have enabled
+      `fragmentDensityMap` and `fragmentDensityMapNonSubsampledImages`. Test:
+      `vulkan::foveation::tests`. Headset (Quest 3, SpaceSoup's low level):
+      outdoor views 15.1-15.8 -> 12.6-13.4 ms GPU, hallway 12.3 -> 10.3.
+      Not done: subsampled images (`VK_IMAGE_CREATE_SUBSAMPLED_BIT_EXT`),
+      runtime-supplied maps (`XR_FB_foveation_vulkan`).
 - [x] `naga` (2026-09-28): the SPIR-V writer declares the 16-bit STORAGE
       capabilities (`StorageBuffer16BitAccess`,
       `UniformAndStorageBuffer16BitAccess`, `StoragePushConstant16`) only

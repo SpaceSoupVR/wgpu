@@ -790,6 +790,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
             depth_stencil: None,
             sample_count: desc.sample_count,
             multiview_mask: desc.multiview_mask,
+            fragment_density_map: false,
         };
         let mut fb_key = super::FramebufferKey {
             raw_pass: vk::RenderPass::null(),
@@ -847,6 +848,16 @@ impl crate::CommandEncoder for super::CommandEncoder {
                 stencil_ops: ds.stencil_ops,
             });
             fb_key.push_view(ds.target.view.identified_raw_view());
+        }
+        // Foveation: the density map for what this pass draws into, last.
+        if let Some(fov) = self.device.foveation.read().as_ref() {
+            let targets = desc.color_attachments.iter().flatten().flat_map(|cat| {
+                [Some(cat.target.view.raw), cat.resolve_target.as_ref().map(|at| at.view.raw)]
+            });
+            let map = fov.map_for(targets.flatten());
+            rp_key.fragment_density_map = true;
+            vk_clear_values.push(unsafe { mem::zeroed() });
+            fb_key.push_view(map);
         }
 
         let render_area = vk::Rect2D {
