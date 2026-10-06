@@ -66,6 +66,9 @@ can't be reached through stock wgpu:
       how many waves stay in flight. (The Adreno driver offers no internal
       representations, only statistics.) SpaceSoup enables it with
       `adb shell setprop debug.spacesoup.pipestats 1`. No effect otherwise.
+      Compute pipelines too (2026-10-06): the reflection fix-up's compute
+      shader turned out to be 56,153 instructions, and its scratch-memory
+      line is how a spill shows.
 - [ ] Investigate: naga SPIR-V `RelaxedPrecision` decorations as an alternative
       route to mediump.
 - [ ] Investigate: combined image-samplers on the Vulkan backend (Qualcomm

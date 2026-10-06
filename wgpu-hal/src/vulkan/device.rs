@@ -2328,10 +2328,17 @@ impl crate::Device for super::Device {
             &desc.layout.binding_map,
         )?;
 
+        // SPACESOUP: statistics as for a render pipeline. See `log_pipeline_statistics`.
+        let capture_statistics = self.shared.captures_pipeline_statistics();
         let vk_infos = [{
-            vk::ComputePipelineCreateInfo::default()
+            let info = vk::ComputePipelineCreateInfo::default()
                 .layout(desc.layout.raw)
-                .stage(compiled.create_info)
+                .stage(compiled.create_info);
+            if capture_statistics {
+                info.flags(vk::PipelineCreateFlags::CAPTURE_STATISTICS_KHR)
+            } else {
+                info
+            }
         }];
 
         let pipeline_cache = desc
@@ -2352,6 +2359,9 @@ impl crate::Device for super::Device {
         let raw = raw_vec.pop().unwrap();
         if let Some(label) = desc.label {
             unsafe { self.shared.set_object_name(raw, label) };
+        }
+        if capture_statistics {
+            unsafe { self.shared.log_pipeline_statistics(raw, desc.label) };
         }
 
         if let Some(raw_module) = compiled.temp_raw_module {
