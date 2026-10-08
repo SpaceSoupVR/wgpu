@@ -917,6 +917,19 @@ impl super::Device {
         &self.shared.instance
     }
 
+    /// Build every pipeline whose descriptor names no cache with `cache`
+    /// from here on (SpaceSoupVR fork). A renderer with many pipelines then
+    /// gets the driver's compiled shaders back on the next launch without
+    /// threading a `PipelineCache` through each descriptor; null turns it off.
+    ///
+    /// # Safety
+    ///
+    /// - `cache` is null or a pipeline cache made on this device, and stays
+    ///   alive until it is replaced or no pipeline can be created any more.
+    pub unsafe fn set_default_pipeline_cache(&self, cache: vk::PipelineCache) {
+        *self.shared.default_pipeline_cache.lock() = cache;
+    }
+
     fn get_memory_properties(&self) -> Option<MemoryProperties> {
         if !self
             .shared
@@ -2251,7 +2264,7 @@ impl crate::Device for super::Device {
         let pipeline_cache = desc
             .cache
             .map(|it| it.raw)
-            .unwrap_or(vk::PipelineCache::null());
+            .unwrap_or_else(|| *self.shared.default_pipeline_cache.lock());
 
         let mut raw_vec = {
             profiling::scope!("vkCreateGraphicsPipelines");
@@ -2344,7 +2357,7 @@ impl crate::Device for super::Device {
         let pipeline_cache = desc
             .cache
             .map(|it| it.raw)
-            .unwrap_or(vk::PipelineCache::null());
+            .unwrap_or_else(|| *self.shared.default_pipeline_cache.lock());
 
         let mut raw_vec = {
             profiling::scope!("vkCreateComputePipelines");
@@ -2479,7 +2492,7 @@ impl crate::Device for super::Device {
         let pipeline_cache = desc
             .cache
             .map(|it| it.raw)
-            .unwrap_or(vk::PipelineCache::null());
+            .unwrap_or_else(|| *self.shared.default_pipeline_cache.lock());
 
         let fns = self
             .shared
