@@ -537,6 +537,10 @@ struct DeviceShared {
     /// Fixed foveated rendering, once enabled (SpaceSoupVR fork). See
     /// `foveation`.
     foveation: RwLock<Option<foveation::Foveation>>,
+    /// The pipeline cache a pipeline is built with when its descriptor names
+    /// none (SpaceSoupVR fork); null until set. See
+    /// `Device::set_default_pipeline_cache`.
+    default_pipeline_cache: Mutex<vk::PipelineCache>,
 
     empty_descriptor_set_layout: vk::DescriptorSetLayout,
 
