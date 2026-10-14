@@ -116,6 +116,19 @@ impl super::CommandEncoder {
     }
 }
 
+impl super::CommandEncoder {
+    /// SPACESOUP: one `DRAWLOG` line for a draw or dispatch being recorded,
+    /// while [`super::DRAW_LOG`] is set: its index in this command buffer
+    /// (from 1), the bound pipeline's label, and its vertex, index or
+    /// workgroup count.
+    fn draw_log(&mut self, kind: &str, count: u32) {
+        if super::DRAW_LOG.load(core::sync::atomic::Ordering::Relaxed) {
+            self.draw_log_count += 1;
+            log::warn!("DRAWLOG {kind} {} {} n={count}", self.draw_log_count, self.draw_log_label.as_deref().unwrap_or("?"));
+        }
+    }
+}
+
 impl crate::CommandEncoder for super::CommandEncoder {
     type A = super::Api;
 
@@ -137,6 +150,12 @@ impl crate::CommandEncoder for super::CommandEncoder {
         // Set the name unconditionally, since there might be a
         // previous name assigned to this.
         unsafe { self.device.set_object_name(raw, label.unwrap_or_default()) };
+
+        // SPACESOUP: the draw log's command buffer boundary.
+        self.draw_log_count = 0;
+        if super::DRAW_LOG.load(core::sync::atomic::Ordering::Relaxed) {
+            log::warn!("DRAWLOG begin {}", label.unwrap_or("?"));
+        }
 
         // Reset some state in case the last renderpass was never ended.
         self.rpass_debug_marker_active = false;
@@ -994,6 +1013,9 @@ impl crate::CommandEncoder for super::CommandEncoder {
     }
 
     unsafe fn set_render_pipeline(&mut self, pipeline: &super::RenderPipeline) {
+        if super::DRAW_LOG.load(core::sync::atomic::Ordering::Relaxed) {
+            self.draw_log_label = pipeline.label.clone();
+        }
         unsafe {
             self.current_pipeline_is_multiview = pipeline.is_multiview;
             self.device.raw.cmd_bind_pipeline(
@@ -1089,6 +1111,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
         {
             panic!("This vulkan device is affected by [#8333](https://github.com/gfx-rs/wgpu/issues/8333)");
         }
+        self.draw_log("draw", vertex_count);
         unsafe {
             self.device.raw.cmd_draw(
                 self.active,
@@ -1113,6 +1136,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
         {
             panic!("This vulkan device is affected by [#8333](https://github.com/gfx-rs/wgpu/issues/8333)");
         }
+        self.draw_log("draw", index_count);
         unsafe {
             self.device.raw.cmd_draw_indexed(
                 self.active,
@@ -1343,6 +1367,9 @@ impl crate::CommandEncoder for super::CommandEncoder {
     }
 
     unsafe fn set_compute_pipeline(&mut self, pipeline: &super::ComputePipeline) {
+        if super::DRAW_LOG.load(core::sync::atomic::Ordering::Relaxed) {
+            self.draw_log_label = pipeline.label.clone();
+        }
         unsafe {
             self.device.raw.cmd_bind_pipeline(
                 self.active,
@@ -1353,6 +1380,7 @@ impl crate::CommandEncoder for super::CommandEncoder {
     }
 
     unsafe fn dispatch_workgroups(&mut self, count: [u32; 3]) {
+        self.draw_log("dispatch", count[0] * count[1] * count[2]);
         unsafe {
             self.device
                 .raw

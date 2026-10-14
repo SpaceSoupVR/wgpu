@@ -1102,6 +1102,11 @@ pub struct CommandEncoder {
     counters: Arc<wgt::HalCounters>,
 
     current_pipeline_is_multiview: bool,
+
+    /// SPACESOUP: the bound pipeline's label and the draws recorded in the
+    /// current command buffer, while [`DRAW_LOG`] is set.
+    draw_log_label: Option<Arc<str>>,
+    draw_log_count: u32,
 }
 
 impl Drop for CommandEncoder {
@@ -1174,13 +1179,24 @@ impl crate::DynShaderModule for ShaderModule {}
 pub struct RenderPipeline {
     raw: vk::Pipeline,
     is_multiview: bool,
+    /// SPACESOUP: its label, for the draw log ([`DRAW_LOG`]).
+    label: Option<Arc<str>>,
 }
+
+/// SPACESOUP: while set, every command buffer begun and every draw and
+/// dispatch recorded is logged with the label of the pipeline bound (`DRAWLOG`
+/// lines, warn level), in recording order -- which is the order a per-draw
+/// GPU trace numbers them in, so the two join by command buffer and index.
+/// The app sets it for one frame at a time.
+pub static DRAW_LOG: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
 
 impl crate::DynRenderPipeline for RenderPipeline {}
 
 #[derive(Debug)]
 pub struct ComputePipeline {
     raw: vk::Pipeline,
+    /// SPACESOUP: its label, for the draw log ([`DRAW_LOG`]).
+    label: Option<Arc<str>>,
 }
 
 impl crate::DynComputePipeline for ComputePipeline {}

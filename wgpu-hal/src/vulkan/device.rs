@@ -1487,6 +1487,8 @@ impl crate::Device for super::Device {
             temp_texture_views: Default::default(),
             counters: Arc::clone(&self.counters),
             current_pipeline_is_multiview: false,
+            draw_log_label: None,
+            draw_log_count: 0,
         })
     }
 
@@ -2318,6 +2320,7 @@ impl crate::Device for super::Device {
         Ok(super::RenderPipeline {
             raw,
             is_multiview: desc.multiview_mask.is_some(),
+            label: desc.label.map(Arc::from),
         })
     }
 
@@ -2383,7 +2386,7 @@ impl crate::Device for super::Device {
 
         self.counters.compute_pipelines.add(1);
 
-        Ok(super::ComputePipeline { raw })
+        Ok(super::ComputePipeline { raw, label: desc.label.map(Arc::from) })
     }
 
     unsafe fn destroy_compute_pipeline(&self, pipeline: super::ComputePipeline) {
